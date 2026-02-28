@@ -1,0 +1,130 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Role helpers ─────────────────────────────────────────────────────────
+    function tokenRoles() {
+      return request.auth != null && request.auth.token.roles != null;
+    }
+    function hasTokenRole(role) {
+      return tokenRoles() && role in request.auth.token.roles;
+    }
+    // checks custom-claim first; falls back to users doc's roles array
+    function hasRole(role) {
+      return request.auth != null && (
+        hasTokenRole(role) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         role in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles)
+      );
+    }
+    // Convenience: any admin tier
+    function isAdmin() {
+      return hasRole('super_admin') || hasRole('corp_admin') || hasRole('system_admin');
+    }
+    // Any officer or admin who can manage reports
+    function canManageReports() {
+      return isAdmin() ||
+        hasRole('corp_officer') || hasRole('ward_officer') ||
+        hasRole('zonal_officer') || hasRole('sanitation_worker');
+    }
+
+    // Users — own profile or admin
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId || isAdmin();
+      allow delete: if hasRole('super_admin') || hasRole('system_admin');
+      
+      match /notifications/{notificationId} {
+        allow read, write: if request.auth.uid == userId || isAdmin();
+      }
+    }
+
+    // Reports — any auth user creates; officers/admins update; super_admin can delete
+    match /reports/{reportId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.reporterId == request.auth.uid;
+      allow update: if request.auth != null && canManageReports();
+      allow delete: if hasRole('super_admin') || hasRole('system_admin');
+    }
+
+    // Waste listings
+    match /waste_listings/{listingId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.listerId == request.auth.uid
+        && (hasRole('shop_owner') || hasRole('hotel_owner') || hasRole('market_vendor'));
+      allow update: if request.auth != null && (
+        resource.data.listerId == request.auth.uid || 
+        resource.data.claimerId == request.auth.uid ||
+        hasRole('farmer') || hasRole('animal_shelter') || hasRole('recycler') || isAdmin()
+      );
+    }
+
+    match /roleRequests/{uid} {
+      allow read: if request.auth.uid == uid || isAdmin();
+      allow create: if request.auth.uid == uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Wards — public read; any admin can write
+    match /wards/{wardId} {
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // Blocks — public read; any auth can write (citizen adoptions)
+    match /blocks/{blockId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /cleanProofs/{proofId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.uploaderId == request.auth.uid;
+    }
+
+    match /badges/{badgeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /cityStats/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /specialZones/{zoneId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /cleanupEvents/{eventId} {
+      allow read: if request.auth != null;
+      allow create, update: if isAdmin() || hasRole('college_admin');
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /mail/{document=**} {
+      allow create: if request.auth != null;
+    }
+
+    // Forgot-password OTPs — only Cloud Functions (admin SDK) may read/write
+    match /passwordResetOtps/{docId} {
+      allow read, write: if false;
+    }
+
+    // Audit logs — admins read only; cloud functions write via admin SDK
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+  }
+}
+

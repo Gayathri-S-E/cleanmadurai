@@ -1,0 +1,386 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+/* Hero */
+.hero {
+    background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-500) 60%, var(--color-primary-400) 100%);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-8);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero::after {
+    content: '';
+    position: absolute;
+    bottom: -30px;
+    right: -30px;
+    width: 180px;
+    height: 180px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.heroLeft {
+    position: relative;
+    z-index: 1;
+}
+
+.greeting {
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: var(--fw-medium);
+}
+
+.heroName {
+    font-family: var(--font-display);
+    font-size: var(--text-4xl);
+    font-weight: var(--fw-black);
+    color: white;
+    margin: var(--space-1) 0;
+    letter-spacing: -0.02em;
+}
+
+.heroSub {
+    font-size: var(--text-sm);
+    color: rgba(255, 255, 255, 0.75);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.roleChip {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: var(--fw-semibold);
+    text-transform: capitalize;
+}
+
+/* Score ring */
+.heroScore {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    position: relative;
+    z-index: 1;
+}
+
+.scoreRing {
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.scoreCircle {
+    width: 80px;
+    height: 80px;
+}
+
+.scoreVal {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--fw-black);
+    color: white;
+}
+
+.scoreLabel {
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: var(--fw-semibold);
+    color: rgba(255, 255, 255, 0.75);
+    text-align: center;
+}
+
+/* Stats */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+}
+
+.statCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    box-shadow: 0 1px 3px rgba(26, 44, 36, 0.07);
+    transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+}
+
+.statCard:hover {
+    box-shadow: 0 4px 16px rgba(26, 44, 36, 0.10);
+    transform: translateY(-2px);
+}
+
+.statIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.statVal {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    font-weight: var(--fw-black);
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.statLabel {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-weight: var(--fw-medium);
+}
+
+/* Sections */
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.sectionTitle {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--fw-bold);
+    color: var(--text-primary);
+}
+
+/* Actions */
+.actionsGrid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--space-3);
+}
+
+.actionCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-2);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    text-decoration: none;
+    box-shadow: 0 1px 3px rgba(26, 44, 36, 0.07);
+    transition: all var(--transition-normal);
+    cursor: pointer;
+}
+
+.actionCard:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--border-default);
+}
+
+.actionIcon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform var(--transition-fast);
+}
+
+.actionCard:hover .actionIcon {
+    transform: scale(1.1);
+}
+
+.actionLabel {
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* Badges */
+.badgesRow {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.badgeCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: var(--space-4);
+    width: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(26, 44, 36, 0.07);
+    transition: transform var(--transition-normal);
+}
+
+.badgeCard:hover {
+    transform: translateY(-2px);
+}
+
+.badgeEmoji {
+    font-size: 2rem;
+}
+
+.badgeName {
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: var(--fw-bold);
+    color: var(--text-primary);
+}
+
+.badgeDesc {
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: var(--leading-relaxed);
+}
+
+/* CTA */
+.ctaCard {
+    background: linear-gradient(135deg, var(--color-primary-50), var(--bg-surface));
+    border: 2px solid var(--color-primary-100);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-10);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.ctaIcon {
+    font-size: 3rem;
+}
+
+.ctaTitle {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: var(--fw-bold);
+    color: var(--text-primary);
+}
+
+.ctaDesc {
+    color: var(--text-muted);
+    max-width: 360px;
+}
+
+/* City score */
+.cityScore {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    box-shadow: 0 1px 3px rgba(26, 44, 36, 0.07);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.cityScoreHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+}
+
+.progressBar {
+    height: 12px;
+    background: var(--bg-muted);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary-400), var(--color-primary-500));
+    border-radius: var(--radius-full);
+    transition: width 1s ease;
+}
+
+.scoreRange {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--text-sm);
+    font-family: var(--font-display);
+    font-weight: var(--fw-semibold);
+    color: var(--text-muted);
+}
+
+.mottoLine {
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+    font-weight: var(--fw-semibold);
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.swachhLine {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin: var(--space-1) 0 0;
+    line-height: var(--leading-relaxed);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .actionsGrid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .statsGrid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .heroName {
+        font-size: var(--text-3xl);
+    }
+}
+
+@media (max-width: 480px) {
+    .hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-4);
+    }
+
+    .actionsGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .statsGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

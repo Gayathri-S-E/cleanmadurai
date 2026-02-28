@@ -1,0 +1,327 @@
+{
+    "nav": {
+        "home": "Home",
+        "report": "Report Issue",
+        "map": "Map",
+        "exchange": "Waste Exchange",
+        "profile": "Profile",
+        "dashboard": "Dashboard",
+        "adminPanel": "Admin Panel",
+        "leaderboard": "Leaderboard",
+        "adopt": "Adopt-a-Block",
+        "notifications": "Notifications",
+        "settings": "Settings",
+        "admin": {
+            "overview": "Overview",
+            "kpi": "KPI Analytics",
+            "wards": "Ward Rankings",
+            "reports": "Reports",
+            "roles": "Role Approvals",
+            "users": "Users",
+            "zones": "Special Zones",
+            "blocks": "Block Management",
+            "settings": "Settings",
+            "system": "System Mgmt"
+        },
+        "officer": {
+            "queue": "Report Queue",
+            "predictions": "AI Predictions",
+            "workers": "Worker Welfare"
+        }
+    },
+    "auth": {
+        "login": "Login",
+        "signup": "Sign Up",
+        "logout": "Logout",
+        "email": "Email Address",
+        "password": "Password",
+        "phone": "Phone Number",
+        "otp": "Enter OTP",
+        "sendOtp": "Send OTP",
+        "verify": "Verify",
+        "continueWithEmail": "Continue with Email",
+        "continueWithPhone": "Continue with Phone",
+        "dontHaveAccount": "Don't have an account?",
+        "alreadyHaveAccount": "Already have an account?",
+        "forgotPassword": "Forgot Password?",
+        "resetPasswordTitle": "Enter OTP & new password",
+        "newPassword": "New password",
+        "sendOtpToEmail": "Send OTP to email",
+        "resetPasswordButton": "Reset password",
+        "selectRole": "What describes you best?",
+        "roleSubtitle": "This helps us personalize your experience",
+        "roles": {
+            "citizen": "Citizen / Resident",
+            "volunteer": "Volunteer / Student",
+            "shop_owner": "Shop Owner",
+            "hotel_owner": "Hotel Owner",
+            "market_vendor": "Market Vendor",
+            "farmer": "Farmer",
+            "animal_shelter": "Animal Shelter",
+            "recycler": "Recycler",
+            "auto_driver": "Auto Driver",
+            "college_admin": "College / NGO Admin",
+            "corp_officer": "Corporation Officer",
+            "corp_admin": "Corporation Admin",
+            "system_admin": "System Admin"
+        },
+        "pendingApproval": "Your account is pending approval",
+        "pendingApprovalDesc": "A Corporation Admin will review your role request shortly."
+    },
+    "report": {
+        "title": "Report Issue",
+        "takePhoto": "Take Photo",
+        "choosePhoto": "Choose Photo",
+        "photoRequired": "A photo is required",
+        "issueType": "Issue Type",
+        "selectType": "Select issue type",
+        "description": "Description (Optional)",
+        "descriptionPlaceholder": "Describe the issue...",
+        "location": "Location",
+        "fetchingLocation": "Fetching your location...",
+        "glassSOS": "Glass SOS",
+        "glassSosDesc": "Mark as HIGH PRIORITY if glass is posing immediate danger",
+        "submit": "Submit Report",
+        "submitting": "Submitting...",
+        "success": "Report submitted successfully!",
+        "offline": "Saved offline, will sync when connected",
+        "issueTypes": {
+            "glass_on_road": "Glass on Road",
+            "garbage_pile": "Garbage Pile",
+            "plastic_waste": "Plastic Waste",
+            "organic_waste": "Organic Waste",
+            "drainage": "Drainage Issue",
+            "burning": "Burning / Fire",
+            "toilet_issue": "Toilet Issue",
+            "dead_animal": "Dead Animal",
+            "others": "Others"
+        },
+        "status": {
+            "open": "Open",
+            "assigned": "Assigned",
+            "in_progress": "In Progress",
+            "resolved": "Resolved",
+            "rejected": "Rejected"
+        },
+        "myReports": "My Reports",
+        "noReports": "No reports yet",
+        "makeFirstReport": "Be the first to report an issue in your area!",
+        "reportedBy": "Reported",
+        "anonymous": "Anonymous"
+    },
+    "map": {
+        "title": "Cleanliness Map",
+        "filters": "Filters",
+        "ward": "Ward",
+        "allWards": "All Wards",
+        "issueType": "Issue Type",
+        "allTypes": "All Types",
+        "status": "Status",
+        "allStatuses": "All Statuses",
+        "timeRange": "Time Range",
+        "last24h": "Last 24 Hours",
+        "last7d": "Last 7 Days",
+        "last30d": "Last 30 Days",
+        "allTime": "All Time",
+        "heatmap": "Heatmap",
+        "markers": "Markers",
+        "dangerZones": "Danger Zones",
+        "specialZones": "Special Zones",
+        "searchArea": "Search area or ward...",
+        "markerPopup": {
+            "type": "Type",
+            "status": "Status",
+            "reported": "Reported",
+            "ward": "Ward"
+        }
+    },
+    "exchange": {
+        "title": "Waste Exchange",
+        "createListing": "Create Listing",
+        "myListings": "My Listings",
+        "availableListings": "Available Listings",
+        "wasteType": "Waste Type",
+        "quantity": "Quantity",
+        "pickupWindow": "Pickup Window",
+        "location": "Location",
+        "claim": "Claim",
+        "claimed": "Claimed",
+        "markPicked": "Mark as Picked",
+        "picked": "Picked Up",
+        "expired": "Expired",
+        "pointsEarned": "+{{points}} points earned!",
+        "categories": {
+            "shop": "Shop",
+            "hotel": "Hotel",
+            "market": "Market"
+        },
+        "wasteTypes": {
+            "dry_plastic": "Dry - Plastic",
+            "dry_cardboard": "Dry - Cardboard",
+            "dry_metal": "Dry - Metal",
+            "organic_veg": "Organic - Vegetables",
+            "organic_cooked": "Organic - Cooked Food",
+            "mixed": "Mixed"
+        }
+    },
+    "adopt": {
+        "title": "Adopt-a-Block",
+        "digital_twin": "Digital Twin",
+        "adopt": "Adopt This Block",
+        "adopted": "Adopted",
+        "free": "Available",
+        "uploadProof": "Upload Clean Proof",
+        "proofUploaded": "Clean proof uploaded!",
+        "owner": "Owner",
+        "score": "Cleanliness Score",
+        "lastProof": "Last Clean Proof",
+        "openComplaints": "Open Complaints"
+    },
+    "gamification": {
+        "points": "Points",
+        "badges": "Badges",
+        "leaderboard": "Leaderboard",
+        "leaderboardSubtitle": "Top by Jigarthanda Points — keeping Madurai clean",
+        "rank": "Rank",
+        "weekly": "Weekly",
+        "monthly": "Monthly",
+        "allTime": "All Time",
+        "wards": "Wards",
+        "volunteers": "Volunteers",
+        "colleges": "Colleges",
+        "autoDrivers": "Auto Drivers",
+        "badges_list": {
+            "glass_guardian": "Glass Guardian",
+            "temple_hero": "Temple Zone Hero",
+            "street_savior": "Street Savior",
+            "eco_champion": "Eco Champion",
+            "first_report": "First Reporter",
+            "fifty_reports": "50 Reports!",
+            "clean_sweep": "Clean Sweep"
+        }
+    },
+    "officer": {
+        "dashboard": "Officer Dashboard",
+        "queue": "Report Queue",
+        "assignWorker": "Assign Worker",
+        "workerName": "Worker Name",
+        "changeStatus": "Change Status",
+        "uploadAfterPhoto": "Upload After Photo",
+        "festivalMode": "Festival Mode Active",
+        "priority": {
+            "sos": "SOS",
+            "high": "High",
+            "normal": "Normal",
+            "low": "Low"
+        }
+    },
+    "admin": {
+        "dashboard": "Admin Dashboard",
+        "wardRankings": "Ward Rankings",
+        "userApproval": "User Approvals",
+        "approve": "Approve",
+        "reject": "Reject",
+        "specialZones": "Special Zones",
+        "festivalCalendar": "Festival Calendar",
+        "exportData": "Export Data",
+        "totalReports": "Total Reports",
+        "resolvedToday": "Resolved Today",
+        "activeUsers": "Active Users",
+        "wasteExchanges": "Waste Exchanges"
+    },
+    "common": {
+        "loading": "Loading...",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "confirm": "Confirm",
+        "close": "Close",
+        "back": "Back",
+        "next": "Next",
+        "submit": "Submit",
+        "search": "Search",
+        "filter": "Filter",
+        "sort": "Sort",
+        "noData": "No data available",
+        "error": "Something went wrong",
+        "retry": "Retry",
+        "success": "Success!",
+        "required": "Required",
+        "optional": "Optional",
+        "viewAll": "View All",
+        "seeMore": "See More",
+        "points": "points",
+        "km": "km",
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "createdAt": "Created",
+        "updatedAt": "Updated"
+    },
+    "landing": {
+        "hero": {
+            "badge": "Swachh Survekshan Aligned Initiative",
+            "title1": "Keep Madurai",
+            "title2": "Clean & Green",
+            "subtitle": "Join thousands of citizens, volunteers, and businesses making Madurai India's cleanest city — report issues, track progress, and earn rewards.",
+            "cta": "Join the Movement",
+            "trust1": "Free for all citizens",
+            "trust2": "Tamil & English support",
+            "trust3": "Madurai Corporation backed",
+            "mapLabel": "Madurai City",
+            "statOpen": "Open Issues",
+            "statResolved": "Resolved",
+            "statProgress": "In Progress"
+        },
+        "stats": {
+            "reports": "Issues Reported",
+            "wards": "Wards Covered",
+            "citizens": "Active Citizens"
+        },
+        "features": {
+            "heading": "Everything you need to keep your city clean",
+            "subheading": "A powerful civic platform built for Madurai's citizens, businesses, and corporations",
+            "report": {
+                "title": "Report Issues Instantly",
+                "desc": "Snap a photo and report garbage, drainage issues, or hazards. Get updates as they are resolved."
+            },
+            "map": {
+                "title": "Live Cleanliness Map",
+                "desc": "See real-time reports across all 100 wards. Filter by issue type, priority, or area."
+            },
+            "exchange": {
+                "title": "Waste Exchange",
+                "desc": "Shops, hotels, and markets can list waste for pickup. Recyclers claim and earn Jigarthanda Points."
+            },
+            "leaderboard": {
+                "title": "Leaderboard & Badges",
+                "desc": "Compete with other citizens and wards. Earn badges for consistent contributions to cleanliness."
+            }
+        },
+        "cta": {
+            "title": "Ready to make a difference?",
+            "subtitle": "Join thousands of Madurai residents already contributing to a cleaner city.",
+            "button": "Create Free Account"
+        },
+        "footer": {
+            "credit": "Made with ❤️ for Madurai Corporation"
+        }
+    },
+    "app": {
+        "name": "Clean Madurai",
+        "tagline": "Together for a Cleaner City",
+        "motto": "Make Madurai India's cleanest city — every Madurai person contributes.",
+        "jigarthandaPoints": "Jigarthanda Points",
+        "swachhSurvekshan": "Aligned with Swachh Survekshan — ward rankings and citizen participation for Madurai Corporation.",
+        "cityProtector": "City Protector",
+        "greetingMorning": "Good morning",
+        "greetingAfternoon": "Good afternoon",
+        "greetingEvening": "Good evening",
+        "offline": "You are offline",
+        "offlineDesc": "Reports will be saved and synced when you reconnect",
+        "pendingSync": "{{count}} reports waiting to sync",
+        "installApp": "Install App",
+        "update": "Update Available",
+        "updateDesc": "A new version is available. Reload to update."
+    }
+}
