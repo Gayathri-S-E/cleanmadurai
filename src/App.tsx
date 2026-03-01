@@ -22,10 +22,17 @@ const MapPage = lazy(() => import('./features/map/MapPage'));
 const WasteExchange = lazy(() => import('./features/waste-exchange/WasteExchange'));
 const Leaderboard = lazy(() => import('./features/gamification/Leaderboard'));
 const AdoptBlock = lazy(() => import('./features/adopt/AdoptBlock'));
+const MaduraiMirror = lazy(() => import('./features/mirror/MaduraiMirror'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 const NotificationsList = lazy(() => import('./features/notifications/NotificationsList'));
 const DashboardRouter = lazy(() => import('./features/dashboard/DashboardRouter'));
 const WasteCrime = lazy(() => import('./features/reports/WasteCrime'));
+const TaskCompletion = lazy(() => import('./features/dashboard/sanitation-worker/TaskCompletion'));
+const RestroomFinder = lazy(() => import('./features/restroom/RestroomFinder'));
+const RestroomManagement = lazy(() => import('./features/restroom/RestroomManagement'));
+const EventsPage = lazy(() => import('./features/events/EventsPage'));
+const BadgesPage = lazy(() => import('./features/gamification/BadgesPage'));
+const RequestBinPage = lazy(() => import('./features/citizen/RequestBinPage'));
 
 function PageLoading() {
   return (
@@ -122,9 +129,15 @@ function App() {
             <Route path="/map" element={<Suspense fallback={<PageLoading />}><MapPage /></Suspense>} />
             <Route path="/leaderboard" element={<Suspense fallback={<PageLoading />}><Leaderboard /></Suspense>} />
             <Route path="/adopt" element={<Suspense fallback={<PageLoading />}><AdoptBlock /></Suspense>} />
+            <Route path="/mirror" element={<Suspense fallback={<PageLoading />}><MaduraiMirror /></Suspense>} />
             <Route path="/profile" element={<Suspense fallback={<PageLoading />}><ProfilePage /></Suspense>} />
             <Route path="/notifications" element={<Suspense fallback={<PageLoading />}><NotificationsList /></Suspense>} />
             <Route path="/waste-crime" element={<Suspense fallback={<PageLoading />}><WasteCrime /></Suspense>} />
+            <Route path="/restrooms" element={<Suspense fallback={<PageLoading />}><RestroomFinder /></Suspense>} />
+            <Route path="/restroom-management" element={<Suspense fallback={<PageLoading />}><RestroomManagement /></Suspense>} />
+            <Route path="/events" element={<Suspense fallback={<PageLoading />}><EventsPage /></Suspense>} />
+            <Route path="/badges" element={<Suspense fallback={<PageLoading />}><BadgesPage /></Suspense>} />
+            <Route path="/request-bin" element={<CitizenOnlyRoute><Suspense fallback={<PageLoading />}><RequestBinPage /></Suspense></CitizenOnlyRoute>} />
 
             {/* Exchange — business roles only */}
             <Route
@@ -150,6 +163,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['corp_officer', 'corp_admin', 'system_admin', 'super_admin', 'zonal_officer', 'ward_officer', 'sanitation_worker']}>
                   <Suspense fallback={<PageLoading />}><DashboardRouter /></Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/worker/task/:id"
+              element={
+                <ProtectedRoute allowedRoles={['sanitation_worker']}>
+                  <Suspense fallback={<PageLoading />}><TaskCompletion /></Suspense>
                 </ProtectedRoute>
               }
             />

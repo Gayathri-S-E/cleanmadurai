@@ -8,9 +8,10 @@ import { db } from '../../services/firebase';
 import {
     ArrowUpFromLine, Map, Trophy, Repeat2, MapPin,
     AlertCircle, CheckCircle, TrendingUp, Star,
-    ShieldCheck, LayoutDashboard, Flame
+    ShieldCheck, LayoutDashboard, Flame, Mic
 } from 'lucide-react';
 import { canAccessAdminPanel, canAccessOfficerDashboard, canAccessWasteExchange } from '../../config/navRoles';
+import { WardWarBanner } from './WardWarBanner';
 import styles from './HomePage.module.css';
 
 // Lazy-load role-specific home pages
@@ -59,7 +60,8 @@ function CitizenHome() {
     const userBadges = allBadges.filter(b => profile?.badges?.includes(b.id));
 
     const quickActions = [
-        { to: '/report', icon: <ArrowUpFromLine size={22} />, label: 'Report Issue', color: 'var(--color-primary-500)', bg: 'var(--color-primary-50)' },
+        { to: '/report?mode=photo', icon: <ArrowUpFromLine size={22} />, label: 'Report Issue', color: 'var(--color-primary-500)', bg: 'var(--color-primary-50)' },
+        { to: '/report?mode=voice', icon: <Mic size={22} />, label: 'Voice Report', color: 'var(--color-info)', bg: 'var(--color-info-bg)' },
         { to: '/map', icon: <Map size={22} />, label: 'View Map', color: 'var(--color-info)', bg: 'var(--color-info-bg)' },
     ];
     if (canAccessAdminPanel(profile?.roles ?? [])) {
@@ -111,6 +113,10 @@ function CitizenHome() {
                     </div>
                 ))}
             </div>
+
+            <section className={styles.section}>
+                <WardWarBanner />
+            </section>
 
             <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>Quick Actions</h2>

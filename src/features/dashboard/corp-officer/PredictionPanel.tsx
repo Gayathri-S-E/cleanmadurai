@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, query, orderBy, limit, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../services/firebase';
 import { useAuth } from '../../../contexts/AuthContext';
-import { Brain, TrendingUp, MapPin, Users, AlertTriangle, Zap } from 'lucide-react';
+import { Brain, TrendingUp, MapPin, Users, AlertTriangle, Zap, Waves } from 'lucide-react';
 import toast from 'react-hot-toast';
 import styles from './PredictionPanel.module.css';
 
@@ -50,6 +50,14 @@ const RISK_LABEL: Record<RiskLevel, string> = {
     low: '🟢 Low Risk',
 };
 
+
+interface ElevationPrediction {
+    name: string;
+    elevation: number;
+    risk: 'critical' | 'warning' | 'low';
+    message: string;
+}
+
 function PredictionPanel() {
     const { user, profile } = useAuth();
     const [zonePredictions, setZonePredictions] = useState<ZonePrediction[]>([]);
@@ -60,11 +68,56 @@ function PredictionPanel() {
     const [assignZone, setAssignZone] = useState<string | null>(null);
     const [festivalDates, setFestivalDates] = useState<string[]>([]);
     const [workers, setWorkers] = useState<{ id: string; name: string }[]>([]);
+    const [elevationPredictions, setElevationPredictions] = useState<ElevationPrediction[]>([]);
+    const [elevationLoading, setElevationLoading] = useState(false);
 
     useEffect(() => {
         loadPredictions();
         fetchWorkers();
+        fetchElevationData();
     }, []);
+
+    const fetchElevationData = async () => {
+        setElevationLoading(true);
+        try {
+            const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+            if (!apiKey) {
+                console.error("VITE_GOOGLE_MAPS_API_KEY is missing");
+                setElevationLoading(false);
+                return;
+            }
+
+            // Coordinates for Simmakkal Underpass and Sellur
+            const locationsParam = `${9.9255},${78.1219}|${9.9360},${78.1180}`;
+
+            const response = await fetch(`https://maps.googleapis.com/maps/api/elevation/json?locations=${locationsParam}&key=${apiKey}`);
+            const data = await response.json();
+
+            if (data.status === 'OK' && data.results.length >= 2) {
+                const simmakkalEl = Math.round(data.results[0].elevation);
+                const sellurEl = Math.round(data.results[1].elevation);
+
+                setElevationPredictions([
+                    {
+                        name: 'Simmakkal Underpass',
+                        elevation: simmakkalEl,
+                        risk: simmakkalEl < 135 ? 'critical' : 'warning',
+                        message: 'High risk of plastic waste flow from northern wards during monsoon.'
+                    },
+                    {
+                        name: 'Sellur Eye Hospital Road',
+                        elevation: sellurEl,
+                        risk: sellurEl < 138 ? 'warning' : 'low',
+                        message: 'Drainage blockage prediction based on topography gradient.'
+                    }
+                ]);
+            }
+        } catch (error) {
+            console.error("Elevation API Error", error);
+        } finally {
+            setElevationLoading(false);
+        }
+    };
 
     const fetchWorkers = async () => {
         try {
@@ -155,7 +208,7 @@ function PredictionPanel() {
                 return {
                     zone: z.name,
                     risk: baseRisk,
-                    predictedVolume: volMap[baseRisk] + Math.round(Math.random() * 20),
+                    predictedVolume: volMap[baseRisk] + (z.name.length % 20),
                     reason: reasonMap[baseRisk],
                     preAssigned: assignments[z.name],
                 };
@@ -283,6 +336,41 @@ function PredictionPanel() {
                         </div>
                     ))}
                 </div>
+            </div>
+
+            {/* Elevation / Monsoon Risk Section (Google Maps Elevation API) */}
+            <div className={styles.section} style={{ marginTop: 'var(--space-6)' }}>
+                <h3 className={styles.sectionTitle} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Waves size={16} color="var(--color-primary-500)" />
+                        Monsoon Waterlogging Risk
+                    </span>
+                    <span className="badge" style={{ fontSize: '10px', background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+                        Powered by Google Elevation API
+                    </span>
+                </h3>
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                    AI analysis of low-elevation zones prone to waste accumulation during heavy rainfall.
+                </div>
+                {elevationLoading ? (
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Fetching live topography data...</div>
+                ) : elevationPredictions.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {elevationPredictions.map((pred, i) => (
+                            <div key={i} className={styles.zoneCard} style={{ borderLeft: `4px solid var(--color-${pred.risk === 'critical' ? 'danger' : pred.risk === 'warning' ? 'warning' : 'success'})` }}>
+                                <div className={styles.zoneTop}>
+                                    <div className={styles.zoneName}>{pred.name}</div>
+                                    <span style={{ fontSize: '12px', color: `var(--color-${pred.risk === 'critical' ? 'danger' : pred.risk === 'warning' ? 'warning' : 'success'})`, fontWeight: 600 }}>
+                                        {pred.elevation}m ASL ({pred.risk === 'critical' ? 'Critical' : pred.risk === 'warning' ? 'Warning' : 'Low Risk'})
+                                    </span>
+                                </div>
+                                <div className={styles.zoneMeta}>{pred.message}</div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div style={{ fontSize: '12px', color: 'var(--color-danger)' }}>Failed to load live Elevation API data. Check API configuration.</div>
+                )}
             </div>
 
             {/* Festival Alert */}

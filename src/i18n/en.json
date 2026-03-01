@@ -2,17 +2,26 @@
     "nav": {
         "home": "Home",
         "report": "Report Issue",
+        "my_reports": "My Reports",
         "map": "Map",
+        "restrooms": "Restrooms",
+        "events": "Events & Drives",
+        "badges": "My Badges",
         "exchange": "Waste Exchange",
         "profile": "Profile",
         "dashboard": "Dashboard",
         "adminPanel": "Admin Panel",
         "leaderboard": "Leaderboard",
         "adopt": "Adopt-a-Block",
+        "mirror": "Madurai Mirror",
+        "request_bin": "Request a Bin",
         "notifications": "Notifications",
         "settings": "Settings",
         "admin": {
             "overview": "Overview",
+            "governance": "Intelligence Hub",
+            "survekshan": "Survekshan 🏆",
+            "wcs": "Waste Credit Score",
             "kpi": "KPI Analytics",
             "wards": "Ward Rankings",
             "reports": "Reports",
@@ -26,7 +35,12 @@
         "officer": {
             "queue": "Report Queue",
             "predictions": "AI Predictions",
-            "workers": "Worker Welfare"
+            "workers": "Worker Welfare",
+            "bins": "Bin Overflow",
+            "route": "Route Optimizer",
+            "nightwatch": "Night Watch",
+            "broadcast": "Ward Broadcast",
+            "restrooms": "Restroom Mgmt"
         }
     },
     "auth": {

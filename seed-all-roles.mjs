@@ -154,6 +154,18 @@ const DEMO_USERS = [
         resolvedReports: 0,
         approved: true,
     },
+    {
+        email: 'sanitation@demo.in',
+        password: 'Demo@1234',
+        displayName: 'Muthu K',
+        roles: ['sanitation_worker'],
+        ward: 'Ward 42 – Meenakshi Nagar',
+        points: 500,
+        badges: ['street_savior'],
+        totalReports: 0,
+        resolvedReports: 45,
+        approved: true,
+    },
 ];
 
 async function fetchJSON(url, options) {

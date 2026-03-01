@@ -4,7 +4,9 @@ import admin from 'firebase-admin';
 import nodemailer from 'nodemailer';
 import express from 'express';
 import cors from 'cors';
+import vision from '@google-cloud/vision';
 admin.initializeApp();
+const visionClient = new vision.ImageAnnotatorClient();
 const OTP_EXPIRY_MINUTES = 10;
 const OTP_LENGTH = 6;
 function getSmtpConfig() {
@@ -257,6 +259,104 @@ async function callGemini(parts) {
     return json?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 }
 // ─── 8.1 AI Waste Type Suggest ────────────────────────────────────────────────
+/**
+ * Process Report Image via Google Cloud Vision API
+ * Performs SafeSearch, Label Detection, and Object Localization to determine waste ratios.
+ */
+export const processReportImage = functions.https.onCall(async (data, context) => {
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
+    const imageBase64 = data.imageBase64;
+    if (!imageBase64) {
+        throw new functions.https.HttpsError('invalid-argument', 'Image Base64 data is required');
+    }
+    try {
+        const request = {
+            image: { content: imageBase64 },
+            features: [
+                { type: 'SAFE_SEARCH_DETECTION' },
+                { type: 'LABEL_DETECTION', maxResults: 15 },
+                { type: 'OBJECT_LOCALIZATION', maxResults: 10 },
+                { type: 'TEXT_DETECTION' },
+                { type: 'LANDMARK_DETECTION', maxResults: 1 }
+            ]
+        };
+        const [result] = await visionClient.annotateImage(request);
+        // 1. Safe Search Check
+        const safeSearch = result.safeSearchAnnotation;
+        const isSafe = !(safeSearch?.adult === 'LIKELY' || safeSearch?.adult === 'VERY_LIKELY' ||
+            safeSearch?.violence === 'LIKELY' || safeSearch?.violence === 'VERY_LIKELY' ||
+            safeSearch?.racy === 'VERY_LIKELY');
+        if (!isSafe) {
+            return { isSafe: false, detectedType: 'others', landmarks: [], detectedText: '', ratios: null };
+        }
+        // 2. Extract Data
+        const labels = result.labelAnnotations || [];
+        const objects = result.localizedObjectAnnotations || [];
+        const landmarks = (result.landmarkAnnotations || []).map(l => l.description || '').filter(Boolean);
+        const detectedText = result.fullTextAnnotation?.text?.trim() || '';
+        // 3. Compute material ratios based on labels and objects
+        let glassScore = 0;
+        let plasticScore = 0;
+        let organicScore = 0;
+        let otherScore = 0;
+        const allTerms = [...labels.map(l => ({ name: l.description?.toLowerCase() || '', score: l.score || 0 })),
+            ...objects.map(o => ({ name: o.name?.toLowerCase() || '', score: o.score || 0 }))];
+        allTerms.forEach(term => {
+            if (term.name.includes('glass') || term.name.includes('bottle')) {
+                glassScore += term.score;
+            }
+            else if (term.name.includes('plastic') || term.name.includes('poly') || term.name.includes('bag') || term.name.includes('cup')) {
+                plasticScore += term.score;
+            }
+            else if (term.name.includes('food') || term.name.includes('leaf') || term.name.includes('vegetable') || term.name.includes('fruit') || term.name.includes('plant') || term.name.includes('organic')) {
+                organicScore += term.score;
+            }
+            else if (term.name.includes('waste') || term.name.includes('garbage') || term.name.includes('trash') || term.name.includes('rubbish')) {
+                // Background waste, don't strongly bias
+            }
+            else {
+                otherScore += (term.score * 0.5); // Weight other random things less
+            }
+        });
+        // Add a base offset to prevent 0 division if nothing specific is found
+        otherScore += 0.1;
+        const totalScore = glassScore + plasticScore + organicScore + otherScore;
+        const ratios = {
+            glass: Math.round((glassScore / totalScore) * 100),
+            plastic: Math.round((plasticScore / totalScore) * 100),
+            organic: Math.round((organicScore / totalScore) * 100),
+            other: Math.round((otherScore / totalScore) * 100),
+        };
+        // Determine dominant type for issueType mapping
+        let detectedType = 'others';
+        const strLabels = allTerms.map(t => t.name).join(' ');
+        if (strLabels.includes('fire') || strLabels.includes('smoke') || strLabels.includes('burn')) {
+            detectedType = 'burning';
+        }
+        else if (strLabels.includes('sewage') || strLabels.includes('drain') || strLabels.includes('water')) {
+            detectedType = 'sewage';
+        }
+        else if (strLabels.includes('dog') || strLabels.includes('cat') || strLabels.includes('animal') || strLabels.includes('carcass')) {
+            detectedType = 'dead_animal';
+        }
+        else if (ratios.plastic > 30) {
+            detectedType = 'plastic';
+        }
+        return {
+            isSafe: true,
+            detectedType,
+            landmarks,
+            detectedText,
+            ratios
+        };
+    }
+    catch (error) {
+        console.error('Vision API error:', error);
+        throw new functions.https.HttpsError('internal', 'Image analysis failed.');
+    }
+});
+// ─── 8.2 AI Waste Type Suggest ────────────────────────────────────────────────
 /**
  * Real Gemini Vision waste classification.
  * Accepts { imageDataUrl: string } (base64 JPEG/PNG data URL).

@@ -3,11 +3,12 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-    Home, Map, ArrowUpFromLine, Repeat2, MapPin, Trophy,
+    Home, Map, ArrowUpFromLine, Repeat2, MapPin, Trophy, History,
     LayoutDashboard, Settings, Users, LogOut, ChevronRight,
     Leaf, ShieldCheck, Globe, ChevronDown, ChevronUp,
     BarChart3, Building2, Flag, AlertTriangle, Brain, Smile,
-    List, Star, UserCog, FileText, Layers,
+    List, Star, UserCog, FileText, Layers, Trash2, Navigation, Moon, Award,
+    Toilet, CalendarDays, Medal, Megaphone,
 } from 'lucide-react';
 
 import { getVisibleNavSections, type NavIconId } from '../../config/navRoles';
@@ -17,13 +18,17 @@ const NAV_ICONS: Record<NavIconId, React.ReactNode> = {
     // citizen / shared
     home: <Home size={18} />,
     report: <ArrowUpFromLine size={18} />,
+    my_reports: <History size={18} />,
     map: <Map size={18} />,
     exchange: <Repeat2 size={18} />,
     adopt: <MapPin size={18} />,
     leaderboard: <Trophy size={18} />,
+    mirror: <BarChart3 size={18} />,
     // admin panel sections
     admin: <ShieldCheck size={18} />,
     admin_overview: <BarChart3 size={18} />,
+    admin_governance: <Brain size={18} />,
+    admin_wcs: <Award size={18} />,
     admin_kpi: <Star size={18} />,
     admin_wards: <Building2 size={18} />,
     admin_roles: <ShieldCheck size={18} />,
@@ -39,10 +44,20 @@ const NAV_ICONS: Record<NavIconId, React.ReactNode> = {
     officer_queue: <AlertTriangle size={18} />,
     officer_predictions: <Brain size={18} />,
     officer_workers: <Smile size={18} />,
+    officer_bins: <Trash2 size={18} />,
+    officer_route: <Navigation size={18} />,
+    officer_nightwatch: <Moon size={18} />,
+    officer_broadcast: <Megaphone size={18} />,
+    officer_restrooms: <Toilet size={18} />,
     // bottom bar
     profile: <Users size={18} />,
     settings: <Settings size={18} />,
     logout: <LogOut size={18} />,
+    // citizen new
+    restrooms: <Toilet size={18} />,
+    events: <CalendarDays size={18} />,
+    badges: <Medal size={18} />,
+    request_bin: <Trash2 size={18} />,
 };
 
 interface SidebarProps {

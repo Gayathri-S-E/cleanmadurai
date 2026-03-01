@@ -9,9 +9,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useOfflineQueue } from '../../hooks/useOfflineQueue';
 import type { IssueType } from '../../types';
-import { Camera, MapPin, AlertTriangle, Loader2, CheckCircle, X, ImagePlus } from 'lucide-react';
+import { Camera, MapPin, AlertTriangle, Loader2, CheckCircle, X, ImagePlus, ShieldCheck, Zap } from 'lucide-react';
 import { checkReportBadges, checkAndAwardBadges } from '../../services/badgeService';
 import toast from 'react-hot-toast';
+import * as tf from '@tensorflow/tfjs';
+import * as cocoSsd from '@tensorflow-models/coco-ssd';
 import styles from './ReportForm.module.css';
 
 
@@ -45,10 +47,61 @@ function ReportForm() {
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [inFestivalZone, setInFestivalZone] = useState(false);
+
+    // AI/ML States
+    const [isMlKitScanning, setIsMlKitScanning] = useState(false);
+    const [isVisionScanning, setIsVisionScanning] = useState(false);
+    const [mlKitStage, setMlKitStage] = useState('');
     const [aiSuggesting, setAiSuggesting] = useState(false);
+    const [wasteRatios, setWasteRatios] = useState<{ glass: number, plastic: number, organic: number, other: number } | null>(null);
+
+    const autocompleteRef = useRef<any>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const cocoModelRef = useRef<cocoSsd.ObjectDetection | null>(null);
 
     useEffect(() => {
         fetchLocation();
+    }, []);
+
+    // Pre-warm the COCO-SSD model in the background when online
+    // so it's cached and ready to use if the device goes offline
+    useEffect(() => {
+        if (!navigator.onLine) return;
+        const preWarmModel = async () => {
+            try {
+                await tf.ready();
+                cocoModelRef.current = await cocoSsd.load();
+                console.log('📱 ML Kit (TF.js) model pre-loaded and cached.');
+            } catch (e) {
+                console.warn('ML Kit pre-warm failed:', e);
+            }
+        };
+        preWarmModel();
+    }, []);
+
+
+    // Initialize Google Places Autocomplete
+    useEffect(() => {
+        if (!(window as any).google?.maps?.places || !inputRef.current) return;
+
+        autocompleteRef.current = new (window as any).google.maps.places.Autocomplete(inputRef.current, {
+            componentRestrictions: { country: 'in' }, // Restrict to India
+            fields: ['geometry', 'name', 'formatted_address'],
+        });
+
+        autocompleteRef.current.addListener('place_changed', () => {
+            const place = autocompleteRef.current?.getPlace();
+            if (place?.geometry?.location) {
+                const lat = place.geometry.location.lat();
+                const lng = place.geometry.location.lng();
+                // We're overriding the geolocation hook's position with the manual selection
+                // To do this cleanly, we might need to expose a setter on the hook, or handle it here
+                // For now, let's just append the address to the description if they select it manually, 
+                // or if we had a dedicated 'manual address' state.
+                setDescription((prev) => prev ? `${prev}\n[Location: ${place.formatted_address}]` : `[Location: ${place.formatted_address}]`);
+                toast.success(`Location set to: ${place.name}`);
+            }
+        });
     }, []);
 
     // PR-54: Reports in special zones on festival days get higher priority
@@ -94,6 +147,112 @@ function ReportForm() {
         if (!file) return;
         setPhoto(file);
         setPhotoPreview(URL.createObjectURL(file));
+        runGoogleAIDetectionSequence(file);
+    };
+
+    const runGoogleAIDetectionSequence = async (file: File) => {
+        // Convert file to Base64 once (used by both pipelines)
+        const base64DataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = (err) => reject(err);
+        });
+        const base64String = base64DataUrl.split(',')[1];
+
+        // ── PRIMARY: Cloud Vision API (online) ───────────────────────────────
+        const isOnline = navigator.onLine;
+
+        if (isOnline) {
+            setIsVisionScanning(true);
+            setMlKitStage('☁️ Cloud Vision API: Analyzing image...');
+
+            try {
+                const fn = httpsCallable<{ imageBase64: string }, { isSafe: boolean, detectedType: string, landmarks: string[], detectedText: string, ratios?: any }>(functions, 'processReportImage');
+                const response = await fn({ imageBase64: base64String });
+                const data = response.data;
+
+                if (!data.isSafe) {
+                    toast.error("Image rejected by Safe Search. Please upload a clear photo of waste.", { icon: '🚫' });
+                    setPhoto(null);
+                    setPhotoPreview('');
+                    return;
+                }
+
+                toast.success('☁️ Cloud Vision: Safe Search passed', { icon: '🛡️' });
+
+                if (data.detectedType && data.detectedType !== 'other') {
+                    const mappedType = data.detectedType === 'plastic' ? 'plastic_waste'
+                        : data.detectedType === 'burning' ? 'burning'
+                            : data.detectedType === 'sewage' ? 'drainage'
+                                : 'others';
+                    setIssueType(mappedType as IssueType);
+                    toast.success(`☁️ AI Detected: ${mappedType.replace(/_/g, ' ')}`);
+                }
+
+                if (data.landmarks && data.landmarks.length > 0) {
+                    const ocrText = data.detectedText ? `\n[OCR]: ${data.detectedText}` : '';
+                    setDescription(`Automated Report: Waste detected near ${data.landmarks[0]}.${ocrText}`);
+                    toast.success(`☁️ Landmark: "${data.landmarks[0]}"`);
+                } else if (data.detectedText) {
+                    setDescription(`[OCR Detected]: ${data.detectedText}`);
+                }
+
+                if (data.ratios) {
+                    setWasteRatios(data.ratios);
+                }
+
+                // Vision API succeeded – no need for ML Kit fallback
+                return;
+
+            } catch (visionErr) {
+                console.warn("Cloud Vision API failed, falling back to ML Kit:", visionErr);
+                toast("☁️ Cloud analysis unavailable. Running offline AI…", { icon: '⚠️' });
+            } finally {
+                setIsVisionScanning(false);
+                setMlKitStage('');
+            }
+        }
+
+        // ── FALLBACK: ML Kit / TensorFlow.js (offline or Vision API failed) ──
+        setIsMlKitScanning(true);
+        setMlKitStage('📱 Offline AI (ML Kit): Analyzing image…');
+
+        try {
+            const imgEl = document.createElement('img');
+            imgEl.src = base64DataUrl;
+            await new Promise((res) => { imgEl.onload = res; });
+
+            // Use the pre-loaded cached model if available; otherwise try to load now
+            if (!cocoModelRef.current) {
+                setMlKitStage('📱 Offline AI: Loading model (first time)…');
+                await tf.ready();
+                cocoModelRef.current = await cocoSsd.load();
+            }
+
+            const predictions = await cocoModelRef.current.detect(imgEl);
+            const detected = predictions.filter(p => p.score > 0.5).map(p => p.class);
+
+            console.log("ML Kit (TF.js) Detections:", detected);
+
+            if (detected.length > 0) {
+                toast.success(`📱 Offline AI Detected: ${detected.join(', ')}`);
+                const str = detected.join(' ').toLowerCase();
+                if (str.includes('bottle') || str.includes('cup') || str.includes('plastic')) {
+                    setIssueType('plastic_waste');
+                } else if (str.includes('dog') || str.includes('cat') || str.includes('bird') || str.includes('animal')) {
+                    setIssueType('dead_animal');
+                }
+            } else {
+                toast("📱 Offline AI: No distinct objects detected.", { icon: 'ℹ️' });
+            }
+        } catch (localErr) {
+            console.error("ML Kit (TF.js) detection failed:", localErr);
+            toast.error("AI analysis unavailable. Please fill in the details manually.");
+        } finally {
+            setIsMlKitScanning(false);
+            setMlKitStage('');
+        }
     };
 
     const handleCameraCapture = () => {
@@ -105,6 +264,17 @@ function ReportForm() {
             galleryInputRef.current.setAttribute('accept', 'image/*');
             galleryInputRef.current.click();
         }
+    };
+
+    const handleFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setPhoto(file);
+            setWasteRatios(null);
+            setPhotoPreview(URL.createObjectURL(file));
+            runGoogleAIDetectionSequence(file);
+        }
+        e.target.value = '';
     };
 
     const handleAISuggestType = async () => {
@@ -155,6 +325,7 @@ function ReportForm() {
                 festivalBoost: inFestivalZone,
                 isGlassSOS,
                 isAnonymous,
+                aiRatios: wasteRatios,
                 statusHistory: [{
                     status: 'open',
                     changedBy: user.uid,
@@ -296,14 +467,27 @@ function ReportForm() {
                     </label>
                     {photoPreview ? (
                         <div className={styles.photoPreview}>
-                            <img src={photoPreview} alt="Report photo" className={styles.previewImg} />
-                            <button
-                                type="button"
-                                className={styles.removePhoto}
-                                onClick={() => { setPhoto(null); setPhotoPreview(''); }}
-                            >
-                                <X size={16} />
-                            </button>
+                            <img src={photoPreview} alt="Report photo" className={styles.previewImg} style={{ filter: isMlKitScanning || isVisionScanning ? 'opacity(0.5) blur(2px)' : 'none' }} />
+
+                            {(isMlKitScanning || isVisionScanning) && (
+                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', borderRadius: '12px', color: 'white' }}>
+                                    <div style={{ width: '40px', height: '40px', border: '3px solid #10B981', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 1s linear infinite', marginBottom: '12px' }} />
+                                    <div style={{ fontSize: '13px', fontWeight: 600, textAlign: 'center', padding: '0 16px' }}>
+                                        {isMlKitScanning && <span style={{ color: '#F59E0B', display: 'flex', alignItems: 'center', gap: '4px' }}><Zap size={14} /> {mlKitStage}</span>}
+                                        {isVisionScanning && <span style={{ color: '#3B82F6', display: 'flex', alignItems: 'center', gap: '4px' }}><ShieldCheck size={14} /> {mlKitStage}</span>}
+                                    </div>
+                                </div>
+                            )}
+
+                            {!isMlKitScanning && !isVisionScanning && (
+                                <button
+                                    type="button"
+                                    className={styles.removePhoto}
+                                    onClick={() => { setPhoto(null); setPhotoPreview(''); setIssueType(''); setDescription(''); setWasteRatios(null); }}
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
                         </div>
                     ) : (
                         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -328,6 +512,43 @@ function ReportForm() {
                             </button>
                         </div>
                     )}
+
+                    {wasteRatios && (
+                        <div style={{ marginTop: '16px', background: 'var(--color-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}><ShieldCheck size={16} color="var(--color-primary)" /> Cloud Vision Analysis</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ width: '60px', fontSize: '12px', color: 'var(--color-text-light)' }}>Glass</span>
+                                    <div style={{ flex: 1, height: '8px', background: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${wasteRatios.glass}%`, height: '100%', background: '#3B82F6' }} />
+                                    </div>
+                                    <span style={{ fontSize: '12px', fontWeight: 600, width: '35px', textAlign: 'right' }}>{wasteRatios.glass}%</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ width: '60px', fontSize: '12px', color: 'var(--color-text-light)' }}>Plastic</span>
+                                    <div style={{ flex: 1, height: '8px', background: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${wasteRatios.plastic}%`, height: '100%', background: '#F59E0B' }} />
+                                    </div>
+                                    <span style={{ fontSize: '12px', fontWeight: 600, width: '35px', textAlign: 'right' }}>{wasteRatios.plastic}%</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ width: '60px', fontSize: '12px', color: 'var(--color-text-light)' }}>Organic</span>
+                                    <div style={{ flex: 1, height: '8px', background: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${wasteRatios.organic}%`, height: '100%', background: '#10B981' }} />
+                                    </div>
+                                    <span style={{ fontSize: '12px', fontWeight: 600, width: '35px', textAlign: 'right' }}>{wasteRatios.organic}%</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ width: '60px', fontSize: '12px', color: 'var(--color-text-light)' }}>Other</span>
+                                    <div style={{ flex: 1, height: '8px', background: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${wasteRatios.other}%`, height: '100%', background: '#6B7280' }} />
+                                    </div>
+                                    <span style={{ fontSize: '12px', fontWeight: 600, width: '35px', textAlign: 'right' }}>{wasteRatios.other}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <input
                         ref={fileInputRef}
                         type="file"
@@ -341,11 +562,7 @@ function ReportForm() {
                         type="file"
                         accept="image/*"
                         style={{ display: 'none' }}
-                        onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) { setPhoto(file); setPhotoPreview(URL.createObjectURL(file)); }
-                            e.target.value = '';
-                        }}
+                        onChange={handleFileChosen}
                     />
                 </div>
 
@@ -403,13 +620,24 @@ function ReportForm() {
                         <MapPin size={18} style={{ color: 'var(--color-primary-500)' }} />
                         <span className={styles.sectionLabel} style={{ margin: 0 }}>Location</span>
                         <button type="button" className="btn btn-ghost btn-sm" onClick={fetchLocation} style={{ marginLeft: 'auto' }}>
-                            Refresh
+                            Auto-detect
                         </button>
                     </div>
+
+                    {/* Places Autocomplete Input */}
+                    <div className="form-group" style={{ marginTop: '12px', marginBottom: '12px' }}>
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            className="input"
+                            placeholder="Search location manually (Tamil supported)..."
+                        />
+                    </div>
+
                     {geoLoading ? (
                         <div className={styles.locationLoading}>
                             <Loader2 size={16} className="animate-spin" />
-                            <span>Getting your location...</span>
+                            <span>Getting your precise location...</span>
                         </div>
                     ) : position ? (
                         <div className={styles.locationText}>
@@ -417,7 +645,7 @@ function ReportForm() {
                         </div>
                     ) : (
                         <div className={styles.locationError}>
-                            ⚠️ Location not available. Please allow location permission.
+                            ⚠️ Location not available. Please allow location permission or search above.
                         </div>
                     )}
                 </div>

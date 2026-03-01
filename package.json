@@ -1,5 +1,5 @@
 {
-  "name": "clean-madurai",
+  "name": "Clean Madurai",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,11 +10,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@tensorflow-models/coco-ssd": "^2.2.3",
+    "@tensorflow/tfjs": "^4.22.0",
     "date-fns": "^4.1.0",
     "firebase": "^12.9.0",
     "i18next": "^25.8.13",
     "i18next-browser-languagedetector": "^8.2.1",
     "idb-keyval": "^6.2.2",
+    "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.7",
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",
     "lucide-react": "^0.575.0",
@@ -24,10 +29,12 @@
     "react-i18next": "^16.5.4",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.13.1",
+    "recharts": "^3.7.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@types/google.maps": "^3.58.1",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",

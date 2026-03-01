@@ -4,7 +4,7 @@ import {
     query, orderBy, addDoc, getDoc
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { MapContainer, TileLayer, Circle, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Circle, Popup, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { db, storage } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,6 +24,12 @@ function AdoptBlock() {
     const [searchQuery, setSearchQuery] = useState('');
     const [creatingWard, setCreatingWard] = useState(false);
 
+    // Pinpoint states
+    const [isPinpointing, setIsPinpointing] = useState(false);
+    const [newMarker, setNewMarker] = useState<{ lat: number, lng: number } | null>(null);
+    const [newBlockName, setNewBlockName] = useState('');
+    const [newBlockWard, setNewBlockWard] = useState(profile?.ward ?? '');
+
     // Clean proof upload state
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [proofBlockId, setProofBlockId] = useState<string | null>(null);
@@ -31,6 +37,12 @@ function AdoptBlock() {
     const [proofPreview, setProofPreview] = useState<string>('');
     const [uploadingProof, setUploadingProof] = useState(false);
     const [viewMode, setViewMode] = useState<'adopt' | 'twin' | 'map'>('adopt');
+
+    // Add Block from List view state
+    const [isAddingBlock, setIsAddingBlock] = useState(false);
+    const [addBlockName, setAddBlockName] = useState('');
+    const [addBlockWard, setAddBlockWard] = useState(profile?.ward ?? '');
+    const [addBlockAddress, setAddBlockAddress] = useState('');
 
     // Fetch blocks from Firestore
     useEffect(() => {
@@ -78,10 +90,6 @@ function AdoptBlock() {
         }
         if (adopted.length >= 3) {
             toast.error('You can only adopt a maximum of 3 blocks.', { icon: '🚫' });
-            return;
-        }
-        if (block.ward !== profile.ward) {
-            toast.error(`You can only adopt blocks in your ward (${profile.ward ?? 'Unknown'})`, { icon: '🚫' });
             return;
         }
 
@@ -137,6 +145,38 @@ function AdoptBlock() {
         } finally {
             setCreatingWard(false);
         }
+    };
+
+    // ── Create Block from List ──
+    const handleCreateBlockList = async () => {
+        if (!user || !profile || !addBlockName.trim() || !addBlockWard.trim()) return;
+        setLoading(true);
+        try {
+            const docRef = await addDoc(collection(db, 'blocks'), {
+                name: addBlockName.trim(),
+                ward: addBlockWard.trim(),
+                address: addBlockAddress.trim() || undefined,
+                center: { lat: MADURAI_CENTER[0], lng: MADURAI_CENTER[1], Geohash: '' }, // Default center if not on map
+                score: 50,
+                openReports: 0,
+                createdAt: serverTimestamp(),
+            });
+
+            setBlocks(prev => [...prev, {
+                id: docRef.id,
+                name: addBlockName.trim(),
+                ward: addBlockWard.trim(),
+                address: addBlockAddress.trim() || undefined,
+                score: 50,
+                openReports: 0
+            }]);
+
+            toast.success(`Created Block "${addBlockName}"! 🏙️`);
+            setIsAddingBlock(false);
+            setAddBlockName('');
+            setAddBlockAddress('');
+        } catch (e: any) { toast.error('Failed to create block'); }
+        finally { setLoading(false); }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,18 +391,82 @@ function AdoptBlock() {
             ) : viewMode === 'map' ? (
                 <div className={styles.section}>
                     <h2 className={styles.sectionTitle}>Blocks Map</h2>
-                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                        Click a block to see details and adopt it. &nbsp;
-                        <span style={{ color: '#16A34A' }}>●</span> Clean &nbsp;
-                        <span style={{ color: '#F59E0B' }}>●</span> Needs attention &nbsp;
-                        <span style={{ color: '#DC2626' }}>●</span> Critical
-                    </p>
-                    <div style={{ height: '480px', borderRadius: 'var(--radius-xl)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                            Click a block to see details and adopt it. &nbsp;
+                            <span style={{ color: '#16A34A' }}>●</span> Clean &nbsp;
+                            <span style={{ color: '#F59E0B' }}>●</span> Needs attention &nbsp;
+                            <span style={{ color: '#DC2626' }}>●</span> Critical
+                        </p>
+                        <button
+                            className={`btn btn-sm ${isPinpointing ? 'btn-danger' : 'btn-primary'}`}
+                            onClick={() => {
+                                setIsPinpointing(!isPinpointing);
+                                setNewMarker(null);
+                            }}
+                        >
+                            <MapPin size={14} /> {isPinpointing ? 'Cancel Pinpoint' : 'Pinpoint New Block'}
+                        </button>
+                    </div>
+
+                    {isPinpointing && (
+                        <div style={{ background: 'var(--color-primary-50)', padding: '12px', borderRadius: '8px', marginBottom: '16px', border: '1px solid var(--color-primary-200)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--color-primary-700)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <MapPin size={18} /> Tap the map to set the new block's location
+                            </div>
+                            {newMarker && (
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <input type="text" className="input input-sm" placeholder="Block Name (e.g., 5th Cross St)" value={newBlockName} onChange={e => setNewBlockName(e.target.value)} style={{ flex: 1, minWidth: '150px' }} />
+                                    <input type="text" className="input input-sm" placeholder="Ward Name" value={newBlockWard} onChange={e => setNewBlockWard(e.target.value)} style={{ width: '120px' }} />
+                                    <button className="btn btn-primary btn-sm" disabled={!newBlockName || loading} onClick={async () => {
+                                        if (!user || !profile || adopted.length >= 3) return;
+                                        setLoading(true);
+                                        try {
+                                            const docRef = await addDoc(collection(db, 'blocks'), {
+                                                name: newBlockName,
+                                                ward: newBlockWard,
+                                                center: { lat: newMarker.lat, lng: newMarker.lng, Geohash: '' },
+                                                score: 50,
+                                                openReports: 0,
+                                                adopterId: user.uid,
+                                                adopterName: profile.displayName,
+                                                ownerId: user.uid,
+                                                ownerName: profile.displayName,
+                                                createdAt: serverTimestamp(),
+                                                adoptedAt: serverTimestamp(),
+                                            });
+                                            await updateUserProfile({
+                                                adoptedBlocks: [...(profile.adoptedBlocks ?? []), docRef.id],
+                                                points: (profile.points ?? 0) + 50,
+                                            });
+                                            setAdopted(prev => [...prev, docRef.id]);
+                                            toast.success(`Created & Adopted "${newBlockName}"! +50 points 🌿`);
+                                            setIsPinpointing(false);
+                                            setNewMarker(null);
+                                            setNewBlockName('');
+                                            // trigger fetch slightly later
+                                            setTimeout(() => window.location.reload(), 1500);
+                                        } catch (e: any) { toast.error('Failed to create block'); }
+                                        finally { setLoading(false); }
+                                    }}>Save & Adopt (+50 pts)</button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div style={{ height: '480px', borderRadius: 'var(--radius-xl)', overflow: 'hidden', border: '1px solid var(--border-subtle)', position: 'relative', cursor: isPinpointing ? 'crosshair' : 'grab' }}>
                         <MapContainer center={MADURAI_CENTER} zoom={13} style={{ width: '100%', height: '100%' }}>
                             <TileLayer
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                             />
+                            {/* Component to capture clicks */}
+                            <MapEvents onClick={(e: any) => isPinpointing && setNewMarker(e.latlng)} />
+
+                            {newMarker && (
+                                <Circle center={[newMarker.lat, newMarker.lng]} radius={120} pathOptions={{ color: '#8B5CF6', fillColor: '#8B5CF6', fillOpacity: 0.6 }} />
+                            )}
+
                             {blocks.filter(matchesSearch).map((b) => {
                                 const center = (b as any).center as { lat: number; lng: number } | undefined;
                                 if (!center?.lat || !center?.lng) return null;
@@ -371,9 +475,9 @@ function AdoptBlock() {
                                 const isMine = adopted.includes(b.id!);
                                 const color = isMine ? '#16A34A'
                                     : isAdoptedByOther ? '#6B7280'
-                                    : score >= 60 ? '#22C55E'
-                                    : score >= 40 ? '#F59E0B'
-                                    : '#DC2626';
+                                        : score >= 60 ? '#22C55E'
+                                            : score >= 40 ? '#F59E0B'
+                                                : '#DC2626';
                                 return (
                                     <Circle
                                         key={b.id}
@@ -400,7 +504,7 @@ function AdoptBlock() {
                                                             fontSize: '13px', fontWeight: 600,
                                                         }}
                                                         onClick={() => handleAdopt(b)}
-                                                        disabled={loading || b.ward !== profile?.ward || adopted.length >= 3}
+                                                        disabled={loading || adopted.length >= 3}
                                                     >
                                                         Adopt (+50 pts)
                                                     </button>
@@ -466,11 +570,19 @@ function AdoptBlock() {
                         </div>
                     ) : availableBlocks.length > 0 ? (
                         <>
-                            <div className={styles.sectionTitle}>
-                                Available Blocks {lowerQ ? `matching "${searchQuery}"` : '(Worst First)'}
-                                <span style={{ marginLeft: '8px', fontWeight: 'normal', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                                    {availableBlocks.length} block{availableBlocks.length !== 1 ? 's' : ''}
-                                </span>
+                            <div className={styles.sectionTitle} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                                <div>
+                                    Available Blocks {lowerQ ? `matching "${searchQuery}"` : '(Worst First)'}
+                                    <span style={{ marginLeft: '8px', fontWeight: 'normal', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                                        {availableBlocks.length} block{availableBlocks.length !== 1 ? 's' : ''}
+                                    </span>
+                                </div>
+                                <button
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => setIsAddingBlock(true)}
+                                >
+                                    <PlusCircle size={16} style={{ marginRight: '6px' }} /> Add New Block
+                                </button>
                             </div>
                             <div className={styles.blockGrid}>
                                 {availableBlocks.map(b => (
@@ -491,10 +603,9 @@ function AdoptBlock() {
                                             className="btn btn-primary btn-sm"
                                             style={{ marginTop: '8px', width: '100%' }}
                                             onClick={() => handleAdopt(b)}
-                                            disabled={loading || b.ward !== profile?.ward || adopted.length >= 3}
+                                            disabled={loading || adopted.length >= 3}
                                             title={
-                                                adopted.length >= 3 ? 'Maximum 3 block adoptions reached'
-                                                    : b.ward !== profile?.ward ? `You can only adopt blocks in your ward (${profile?.ward})` : ''
+                                                adopted.length >= 3 ? 'Maximum 3 block adoptions reached' : ''
                                             }
                                         >
                                             <MapPin size={14} /> Adopt This Block (+50 pts)
@@ -548,8 +659,68 @@ function AdoptBlock() {
                     </div>
                 </div>
             )}
+
+            {/* Add New Block Modal */}
+            {isAddingBlock && (
+                <div className="modal-overlay" onClick={() => setIsAddingBlock(false)}>
+                    <div className="modal-box" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="modal-title">Add New Block</h3>
+                            <button className="btn btn-ghost btn-icon" onClick={() => setIsAddingBlock(false)}>
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div className="form-control">
+                                <label className="label">Block Name</label>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    placeholder="e.g., 5th Cross Street"
+                                    value={addBlockName}
+                                    onChange={e => setAddBlockName(e.target.value)}
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">Ward</label>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    placeholder="e.g., Ward 26"
+                                    value={addBlockWard}
+                                    onChange={e => setAddBlockWard(e.target.value)}
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">Address / Area (Optional)</label>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    placeholder="e.g., Near Water Tank"
+                                    value={addBlockAddress}
+                                    onChange={e => setAddBlockAddress(e.target.value)}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                                <button className="btn btn-ghost" onClick={() => setIsAddingBlock(false)} disabled={loading}>
+                                    Cancel
+                                </button>
+                                <button className="btn btn-primary" onClick={handleCreateBlockList} disabled={loading || !addBlockName.trim() || !addBlockWard.trim()}>
+                                    {loading ? 'Creating...' : 'Create Block'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
+}
+
+// Helper component for map events
+function MapEvents({ onClick }: { onClick: (e: any) => void }) {
+    useMapEvents({ click: onClick });
+    return null;
 }
 
 export default AdoptBlock;

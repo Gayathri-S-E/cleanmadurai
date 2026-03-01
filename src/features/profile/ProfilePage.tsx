@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../services/firebase';
-import { Camera, Star, MapPin, LogOut, Loader2 } from 'lucide-react';
+import { Camera, Star, MapPin, LogOut, Loader2, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import BadgeShowcase from './BadgeShowcase';
@@ -115,6 +115,22 @@ function ProfilePage() {
                         <div className={styles.statLabel}>{s.label}</div>
                     </div>
                 ))}
+            </div>
+
+            {/* Quick Actions */}
+            <div className={styles.card} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} onClick={() => navigate('/my-reports')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ background: 'var(--bg-accent-light)', padding: '10px', borderRadius: '8px', color: 'var(--color-accent-600)' }}>
+                        <FileText size={20} />
+                    </div>
+                    <div>
+                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-base)' }}>My Reports History</h3>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '2px' }}>Track status of your submitted issues</div>
+                    </div>
+                </div>
+                <div style={{ color: 'var(--text-muted)' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                </div>
             </div>
 
             {/* Edit form */}

@@ -4,8 +4,9 @@ import { collection, query, orderBy, limit, where, getDocs } from 'firebase/fire
 import { db } from '../../services/firebase';
 import { Trophy, User } from 'lucide-react';
 import styles from './Leaderboard.module.css';
+import WardWarBanner from '../home/WardWarBanner';
 
-type Category = 'wards' | 'blocks' | 'volunteers' | 'colleges' | 'citizens';
+type Category = 'wards' | 'blocks' | 'volunteers' | 'colleges' | 'citizens' | 'ward_war';
 type Period = 'weekly' | 'monthly' | 'all';
 
 interface LeaderEntry {
@@ -24,6 +25,7 @@ const CATEGORIES: { value: Category; label: string; emoji: string }[] = [
     { value: 'volunteers', label: 'Volunteers', emoji: '🙋' },
     { value: 'colleges', label: 'Colleges', emoji: '🎓' },
     { value: 'citizens', label: 'Citizens', emoji: '🧑‍🤝‍🧑' },
+    { value: 'ward_war', label: 'Ward War', emoji: '⚔️' },
 ];
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -46,6 +48,10 @@ function Leaderboard() {
     }, [category, period]);
 
     const fetchLeaderboard = async () => {
+        if (category === 'ward_war') {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
             let entries: LeaderEntry[] = [];
@@ -203,7 +209,11 @@ function Leaderboard() {
                 </div>
             </div>
 
-            {loading ? (
+            {category === 'ward_war' ? (
+                <div style={{ marginTop: '24px' }}>
+                    <WardWarBanner />
+                </div>
+            ) : loading ? (
                 <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
                     Loading leaderboard...
                 </div>
@@ -259,6 +269,11 @@ function Leaderboard() {
                                         {entry.userBadges && entry.userBadges.length > 0 && (
                                             <span style={{ marginLeft: '6px', fontSize: '14px' }} title={entry.userBadges[entry.userBadges.length - 1].name}>
                                                 {entry.userBadges[entry.userBadges.length - 1].icon}
+                                            </span>
+                                        )}
+                                        {i < 3 && period === 'weekly' && (category === 'citizens' || category === 'volunteers') && (
+                                            <span style={{ marginLeft: '8px', fontSize: '11px', background: 'rgba(26,115,232,0.1)', color: '#1a73e8', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(26,115,232,0.3)', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                                                <span style={{ marginRight: '4px' }}>₹</span>GPay Reward
                                             </span>
                                         )}
                                     </div>

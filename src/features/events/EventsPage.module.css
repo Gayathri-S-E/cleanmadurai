@@ -1,0 +1,308 @@
+.page {
+    padding: 16px;
+    max-width: 640px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background: var(--bg-base);
+}
+
+.header {
+    margin-bottom: 16px;
+}
+
+.title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+}
+
+.subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.topRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    gap: 8px;
+}
+
+.tabRow {
+    display: flex;
+    gap: 6px;
+}
+
+.tab {
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 1.5px solid var(--border-subtle);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.tabActive {
+    background: var(--color-primary-500);
+    color: white;
+    border-color: var(--color-primary-500);
+}
+
+.createBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 10px;
+    border: none;
+    background: var(--color-primary-500);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+}
+
+.loading,
+.empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    font-size: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 16px;
+    transition: box-shadow 0.2s;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.cardTop {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.typeBadge {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+}
+
+.slots {
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cardTitle {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.cardMeta {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 4px;
+}
+
+.cardDesc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 8px 0 0;
+}
+
+.cardActions {
+    margin-top: 12px;
+}
+
+.joinBtn {
+    padding: 9px 20px;
+    border-radius: 10px;
+    border: none;
+    background: var(--color-primary-500);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.joinBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.joinedBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 10px;
+    background: rgba(16, 185, 129, 0.1);
+    color: #10B981;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Create Event Modal */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+}
+
+.modal {
+    background: var(--bg-card);
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.modalTitle {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.closeBtn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+}
+
+.formGroup {
+    margin-bottom: 14px;
+}
+
+.formRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+}
+
+.input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border-subtle);
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-size: 14px;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--color-primary-500);
+}
+
+.textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border-subtle);
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-size: 14px;
+    box-sizing: border-box;
+    resize: vertical;
+    font-family: var(--font-display);
+}
+
+.textarea:focus {
+    outline: none;
+    border-color: var(--color-primary-500);
+}
+
+.submitBtn {
+    width: 100%;
+    padding: 13px;
+    border-radius: 12px;
+    border: none;
+    background: var(--color-primary-500);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 4px;
+}
+
+.submitBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}

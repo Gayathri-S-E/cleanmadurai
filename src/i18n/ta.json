@@ -2,17 +2,24 @@
     "nav": {
         "home": "முகப்பு",
         "report": "புகார் அளி",
+        "my_reports": "என் புகார்கள்",
         "map": "வரைபடம்",
+        "restrooms": "கழிவறைகள்",
+        "events": "நிகழ்வுகள் & பயிற்சிகள்",
+        "badges": "என் பட்ஜ்கள்",
         "exchange": "கழிவு பரிமாற்றம்",
         "profile": "சுயவிவரம்",
         "dashboard": "டாஷ்போர்டு",
         "adminPanel": "நிர்வாக பலகம்",
         "leaderboard": "தரவரிசை",
         "adopt": "தெரு தத்தெடு",
+        "mirror": "மதுரை மிர்ரர்",
+        "request_bin": "குப்பைத் தொட்டி கோரு",
         "notifications": "அறிவிப்புகள்",
         "settings": "அமைப்புகள்",
         "admin": {
             "overview": "கண்ணோட்டம்",
+            "survekshan": "சுருக்கண் 🏆",
             "kpi": "KPI பகுப்பாய்வு",
             "wards": "வார்டு தரவரிசை",
             "reports": "புகார்கள்",
@@ -26,7 +33,9 @@
         "officer": {
             "queue": "புகார் வரிசை",
             "predictions": "AI கணிப்புகள்",
-            "workers": "பணியாளர் நலன்"
+            "workers": "பணியாளர் நலன்",
+            "broadcast": "வார்டு அறிவிப்பு",
+            "restrooms": "கழிவறை மேலாண்மை"
         }
     },
     "auth": {

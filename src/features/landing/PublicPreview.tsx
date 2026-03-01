@@ -25,12 +25,14 @@ export function PublicPreview() {
                 // Fetch recent open waste listings
                 const listingsQuery = query(
                     collection(db, 'waste_listings'),
-                    where('status', '==', 'open'),
                     orderBy('createdAt', 'desc'),
-                    limit(3)
+                    limit(10)
                 );
                 const listingsSnap = await getDocs(listingsQuery);
-                const fetchedListings = listingsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const fetchedListings = listingsSnap.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() } as any))
+                    .filter(item => item.status === 'open')
+                    .slice(0, 3);
 
                 // Fetch recent incident reports
                 const reportsQuery = query(

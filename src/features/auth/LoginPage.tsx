@@ -24,7 +24,7 @@ function LoginPage() {
         setError('');
         try {
             await login(email, password);
-            navigate('/home'); // go to app; RootGate/ProtectedRoute handle role or onboarding
+            navigate('/'); // go to app; RootGate/ProtectedRoute handle role or onboarding
 
         } catch (err: any) {
             setError(err.message ?? 'Login failed. Please try again.');
@@ -143,9 +143,17 @@ function LoginPage() {
                         <div className={styles.demoTitle}>⚡ Try Demo Accounts</div>
                         <div className={styles.demoButtons}>
                             {[
-                                { label: '🏙️ Citizen', email: 'citizen@demo.in', pwd: 'Demo@1234', role: 'citizen' },
-                                { label: '🛡️ Officer', email: 'officer@demo.in', pwd: 'Demo@1234', role: 'corp_officer' },
-                                { label: '⚙️ Admin', email: 'admin@demo.in', pwd: 'Demo@1234', role: 'corp_admin' },
+                                { label: '🏘️ Citizen', email: 'citizen@demo.in', pwd: 'Demo@1234', role: 'citizen' },
+                                { label: '🙋 Volunteer', email: 'volunteer@demo.in', pwd: 'Demo@1234', role: 'volunteer' },
+                                { label: '🏪 Shop Owner', email: 'shopowner@demo.in', pwd: 'Demo@1234', role: 'shop_owner' },
+                                { label: '🍽️ Hotel Owner', email: 'hotel@demo.in', pwd: 'Demo@1234', role: 'hotel_owner' },
+                                { label: '🥦 Market Vendor', email: 'vendor@demo.in', pwd: 'Demo@1234', role: 'market_vendor' },
+                                { label: '🌾 Farmer', email: 'farmer@demo.in', pwd: 'Demo@1234', role: 'farmer' },
+                                { label: '🐄 Animal Shelter', email: 'shelter@demo.in', pwd: 'Demo@1234', role: 'animal_shelter' },
+                                { label: '🎓 College Admin', email: 'college@demo.in', pwd: 'Demo@1234', role: 'college_admin' },
+                                { label: '👷 Corp Officer', email: 'officer@demo.in', pwd: 'Demo@1234', role: 'corp_officer' },
+                                { label: '⚙️ Corp Admin', email: 'admin@demo.in', pwd: 'Demo@1234', role: 'corp_admin' },
+                                { label: '🧹 Sanitation Worker', email: 'sanitation@demo.in', pwd: 'Demo@1234', role: 'sanitation_worker' },
                             ].map((d) => (
                                 <button
                                     key={d.label}
@@ -159,7 +167,7 @@ function LoginPage() {
                                         setError('');
                                         try {
                                             await login(d.email, d.pwd);
-                                            navigate('/home');
+                                            navigate('/');
 
                                         } catch (err: any) {
                                             setError('Demo account not found. Please run the seed script first.');

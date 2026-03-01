@@ -1,0 +1,118 @@
+.page {
+    padding: 16px;
+    max-width: 640px;
+    margin: 0 auto;
+    min-height: 100vh;
+}
+
+.header {
+    margin-bottom: 12px;
+}
+
+.title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+}
+
+.subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.progressBar {
+    height: 8px;
+    background: var(--border-subtle);
+    border-radius: 999px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary-500), #F59E0B);
+    border-radius: 999px;
+    transition: width 0.5s ease;
+}
+
+.loading,
+.empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    font-size: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.section {
+    margin-bottom: 28px;
+}
+
+.sectionTitle {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 14px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+}
+
+.card {
+    border-radius: 16px;
+    padding: 16px 12px;
+    text-align: center;
+    border: 1.5px solid var(--border-subtle);
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: default;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.earned {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.06));
+    border-color: rgba(16, 185, 129, 0.25);
+}
+
+.locked {
+    background: var(--bg-card);
+}
+
+.emoji {
+    font-size: 36px;
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.badgeName {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.badgeDesc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.requirement {
+    font-size: 11px;
+    color: var(--color-primary-500);
+    margin-top: 6px;
+    font-weight: 500;
+}

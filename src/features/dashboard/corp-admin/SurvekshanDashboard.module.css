@@ -1,0 +1,206 @@
+.page {
+    padding: 20px;
+    max-width: 760px;
+}
+
+.header {
+    margin-bottom: 20px;
+}
+
+.title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+}
+
+.subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.scoreBanner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    border-radius: 20px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+
+.scoreNum {
+    font-size: 52px;
+    font-weight: 800;
+    color: white;
+    line-height: 1;
+}
+
+.scoreNum span {
+    font-size: 24px;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 400;
+}
+
+.scoreLabel {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 4px;
+}
+
+.scoreRight {
+    text-align: right;
+}
+
+.starBadge {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.pctLabel {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.loading {
+    text-align: center;
+    padding: 60px;
+    color: var(--text-muted);
+    font-size: 15px;
+}
+
+.paramList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.paramCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 16px 18px;
+    transition: box-shadow 0.2s;
+}
+
+.paramCard:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.paramHeader {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.paramIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.paramInfo {
+    flex: 1;
+}
+
+.paramNum {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.paramTitle {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.paramScore {
+    font-size: 22px;
+    font-weight: 800;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.paramScore span {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+.barRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.pct {
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 36px;
+    text-align: right;
+}
+
+.evidence {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.exportBanner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.08));
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 16px;
+    padding: 20px 24px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.exportTitle {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.exportSub {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.exportBtn {
+    padding: 11px 22px;
+    border-radius: 12px;
+    border: none;
+    background: var(--color-primary-500);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+}
+
+.exportBtn:hover {
+    opacity: 0.85;
+}

@@ -1,8 +1,12 @@
 /**
  * Voice Report Form – with Gemini NLP backend (processVoiceReport Cloud Function)
- * Records up to 30s audio, transcribes via Web Speech API,
+ * Records up to 30s audio, optionally transcribes via Web Speech API (Chrome only),
  * then sends transcript to Gemini to extract: landmark, waste_type, urgency, confidence.
  * Geocodes extracted landmark via Nominatim OpenStreetMap API.
+ *
+ * FIX: Speech-to-text (SpeechRecognition) is treated as a bonus — if unavailable or
+ * unreliable (common for ta-IN on non-Chrome), users simply type the transcript.
+ * The AI Extract button is enabled whenever ANY text is present in the description field.
  */
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -35,7 +39,7 @@ async function geocodeLandmark(landmark: string): Promise<{ lat: number; lng: nu
     try {
         const q = encodeURIComponent(`${landmark}, Madurai, Tamil Nadu, India`);
         const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
-            headers: { 'Accept-Language': 'en', 'User-Agent': 'CleanMadurai/1.0' },
+            headers: { 'Accept-Language': 'en', 'User-Agent': 'Clean Madurai/1.0' },
         });
         const data = await res.json();
         if (data.length === 0) return null;
@@ -45,9 +49,9 @@ async function geocodeLandmark(landmark: string): Promise<{ lat: number; lng: nu
     }
 }
 
-const LANG_OPTIONS: { code: LangCode; label: string; speechLang: string }[] = [
-    { code: 'ta', label: 'தமிழ்', speechLang: 'ta-IN' },
-    { code: 'en', label: 'English', speechLang: 'en-IN' },
+const LANG_OPTIONS: { code: LangCode; label: string; speechLang: string; placeholder: string }[] = [
+    { code: 'ta', label: 'தமிழ்', speechLang: 'ta-IN', placeholder: 'குப்பை எங்கே உள்ளது என்று இங்கே தட்டச்சு செய்யுங்கள் (எ.கா: மீனாட்சி கோவில் அருகே குப்பை குவியல் உள்ளது)' },
+    { code: 'en', label: 'English', speechLang: 'en-IN', placeholder: 'Type what you observed (e.g. Garbage pile near Meenakshi Temple east gate, Madurai)' },
 ];
 
 export default function VoiceReportForm() {
@@ -55,13 +59,16 @@ export default function VoiceReportForm() {
     const navigate = useNavigate();
     const { position, address, loading: geoLoading, fetchLocation } = useGeolocation();
 
-    // Recording state
+    // Language & recording
     const [lang, setLang] = useState<LangCode>('ta');
     const [recording, setRecording] = useState(false);
     const [secondsLeft, setSecondsLeft] = useState(MAX_RECORD_SEC);
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
     const [audioURL, setAudioURL] = useState('');
-    const [transcript, setTranscript] = useState('');
+
+    // Description — always editable; SpeechRecognition fills it as a bonus
+    const [description, setDescription] = useState('');
+    const [speechStatus, setSpeechStatus] = useState<'idle' | 'active' | 'processing' | 'unsupported' | 'error'>('idle');
 
     // AI NLP state
     const [aiLoading, setAiLoading] = useState(false);
@@ -77,7 +84,8 @@ export default function VoiceReportForm() {
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
     const speechRecRef = useRef<any>(null);
-    const transcriptRef = useRef('');
+    const liveTranscriptRef = useRef('');
+    const recordingActiveRef = useRef(false);
 
     useEffect(() => { fetchLocation(); }, []);
 
@@ -92,37 +100,106 @@ export default function VoiceReportForm() {
         return () => clearInterval(interval);
     }, [recording, secondsLeft]);
 
+    /** Start Web Speech API recognition — treated as optional bonus */
+    const startSpeechRecognition = (speechLang: string) => {
+        const SRClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SRClass) {
+            setSpeechStatus('unsupported');
+            return;
+        }
+
+        const rec = new SRClass();
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.lang = speechLang;
+        liveTranscriptRef.current = '';
+
+        rec.onresult = (e: any) => {
+            let full = '';
+            for (let i = 0; i < e.results.length; i++) full += e.results[i][0].transcript;
+            liveTranscriptRef.current = full;
+            setDescription(full); // live update the text area
+        };
+
+        rec.onerror = (e: any) => {
+            if (e.error === 'not-allowed') {
+                setSpeechStatus('error');
+            } else if (e.error === 'network') {
+                // network errors for speech recognition are common on localhost — ignore silently
+                console.warn('SpeechRecognition network error (common on localhost)');
+            } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
+                console.warn('SpeechRecognition error:', e.error);
+            }
+        };
+
+        // Auto-restart so recognition continues after silence gaps
+        rec.onend = () => {
+            if (recordingActiveRef.current) {
+                try { rec.start(); } catch { /* ignore restart when already stopping */ }
+            }
+        };
+
+        try {
+            rec.start();
+            speechRecRef.current = rec;
+            setSpeechStatus('active');
+        } catch (err) {
+            console.warn('SpeechRecognition start failed:', err);
+            setSpeechStatus('unsupported');
+        }
+    };
+
     const startRecording = async () => {
         try {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                toast.error('🎙️ Voice recording requires a secure connection (HTTPS) or localhost. Please type your report instead.', { duration: 5000 });
+                return;
+            }
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const recorder = new MediaRecorder(stream);
             chunksRef.current = [];
-            transcriptRef.current = '';
+            liveTranscriptRef.current = '';
+            recordingActiveRef.current = true;
 
             recorder.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
-            recorder.onstop = () => {
+            recorder.onstop = async () => {
                 stream.getTracks().forEach(t => t.stop());
                 const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
                 setAudioBlob(blob);
                 setAudioURL(URL.createObjectURL(blob));
-                setTranscript(transcriptRef.current || '');
+
+                // Call Cloud Speech API backend
+                setSpeechStatus('processing');
+                try {
+                    const base64String = await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(blob);
+                        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                        reader.onerror = error => reject(error);
+                    });
+
+                    const fn = httpsCallable<{ audioBase64: string, lang: string }, { transcript: string, modelUsed: string }>(functions, 'processAudioReport');
+                    const result = await fn({ audioBase64: base64String, lang: lang });
+                    const data = result.data;
+                    if (data.transcript) {
+                        setDescription(data.transcript);
+                        liveTranscriptRef.current = data.transcript;
+                        toast.success(`☁️ Google Cloud Speech (${data.modelUsed || 'Chirp'}): Audio transcribed!`);
+                    } else if (liveTranscriptRef.current) {
+                        setDescription(liveTranscriptRef.current); // Use Web API fallback
+                    }
+                } catch (err) {
+                    console.error("Cloud Speech API error:", err);
+                    if (liveTranscriptRef.current) {
+                        setDescription(liveTranscriptRef.current);
+                    }
+                } finally {
+                    setSpeechStatus('idle');
+                }
             };
 
-            // Web Speech API for live transcription
-            const SRClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-            if (SRClass) {
-                const rec = new SRClass();
-                rec.continuous = true;
-                rec.interimResults = true;
-                rec.lang = LANG_OPTIONS.find(l => l.code === lang)?.speechLang ?? 'ta-IN';
-                rec.onresult = (e: any) => {
-                    let full = '';
-                    for (let i = 0; i < e.results.length; i++) full += e.results[i][0].transcript;
-                    transcriptRef.current = full;
-                };
-                rec.start();
-                speechRecRef.current = rec;
-            }
+            const speechLang = LANG_OPTIONS.find(l => l.code === lang)?.speechLang ?? 'ta-IN';
+            startSpeechRecognition(speechLang);
 
             recorder.start();
             mediaRecorderRef.current = recorder;
@@ -130,24 +207,46 @@ export default function VoiceReportForm() {
             setSecondsLeft(MAX_RECORD_SEC);
             setAiResult(null);
             setGeocodedLocation(null);
-        } catch {
-            toast.error('Microphone access denied or unavailable');
+        } catch (err: any) {
+            if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+                toast.error('Microphone access denied. Please allow microphone access in your browser settings and try again.');
+            } else {
+                toast.error('Could not start recording: ' + (err?.message || 'Unknown error'));
+            }
         }
     };
 
     const stopRecording = () => {
-        if (speechRecRef.current) { try { speechRecRef.current.stop(); } catch { } speechRecRef.current = null; }
+        recordingActiveRef.current = false;
+        if (speechRecRef.current) {
+            try { speechRecRef.current.stop(); } catch { }
+            speechRecRef.current = null;
+        }
         if (mediaRecorderRef.current?.state !== 'inactive') mediaRecorderRef.current?.stop();
         setRecording(false);
+        setSpeechStatus('idle');
+    };
+
+    const resetAll = () => {
+        setAudioBlob(null);
+        setAudioURL('');
+        setDescription('');
+        setAiResult(null);
+        setGeocodedLocation(null);
+        setSpeechStatus('idle');
     };
 
     // Call Gemini NLP via Cloud Function
     const handleAIExtract = async () => {
-        if (!transcript.trim()) { toast.error('No transcript to analyse. Record audio first.'); return; }
+        const text = description.trim();
+        if (!text) {
+            toast.error('Please type or speak a description first.');
+            return;
+        }
         setAiLoading(true);
         try {
             const fn = httpsCallable<{ transcript: string; lang: string }, AIResult>(functions, 'processVoiceReport');
-            const result = await fn({ transcript, lang });
+            const result = await fn({ transcript: text, lang });
             const data = result.data;
             setAiResult(data);
             setSuggestedType(data.waste_type ?? 'others');
@@ -160,14 +259,21 @@ export default function VoiceReportForm() {
                     setLocationNote(data.landmark);
                     toast.success(`📍 Location found: ${data.landmark}`);
                 } else {
-                    toast(`⚠️ Landmark "${data.landmark}" not found on map – please use your GPS location.`);
+                    toast(`⚠️ Landmark "${data.landmark}" not found on map – your GPS location will be used.`);
                 }
             }
 
-            // Auto-flag glass SOS
             if (data.urgency === 'sos') toast('🚨 SOS flagged! Report marked high priority.', { icon: '🚨' });
+            if (!data.landmark) toast('ℹ️ No specific landmark detected. Please specify the location below.', { duration: 4000 });
         } catch (err: any) {
-            toast.error('AI extraction failed: ' + (err.message || 'Try again'));
+            const msg = err?.message || 'Unknown error';
+            if (msg.includes('unauthenticated')) {
+                toast.error('You must be logged in to use AI extraction.');
+            } else if (msg.includes('GEMINI_API_KEY')) {
+                toast.error('AI service is not configured (missing API key). Please contact support.');
+            } else {
+                toast.error('AI extraction failed: ' + msg.slice(0, 100));
+            }
         } finally {
             setAiLoading(false);
         }
@@ -182,13 +288,19 @@ export default function VoiceReportForm() {
             toast.error('Location required. Allow GPS or let AI find your landmark.');
             return;
         }
-        if (!audioBlob) { toast.error('Please record audio first.'); return; }
+        if (!audioBlob && !description.trim()) {
+            toast.error('Please record audio or type a description first.');
+            return;
+        }
 
         setSubmitting(true);
         try {
-            const aRef = storageRef(storage, `reports/audio/${user.uid}/${Date.now()}.webm`);
-            await uploadBytes(aRef, audioBlob);
-            const audioURLStored = await getDownloadURL(aRef);
+            let audioURLStored = '';
+            if (audioBlob) {
+                const aRef = storageRef(storage, `reports/audio/${user.uid}/${Date.now()}.webm`);
+                await uploadBytes(aRef, audioBlob);
+                audioURLStored = await getDownloadURL(aRef);
+            }
 
             const isGlassSOS = aiResult?.urgency === 'sos' || suggestedType === 'glass_on_road';
 
@@ -196,7 +308,7 @@ export default function VoiceReportForm() {
                 reporterId: user.uid,
                 reporterName: profile?.displayName ?? user.displayName,
                 issueType: suggestedType,
-                description: transcript || locationNote || 'Voice report',
+                description: description || locationNote || 'Voice report',
                 location: { lat: finalPosition.lat, lng: finalPosition.lng },
                 address: (geocodedLocation?.displayName ?? locationNote) || (address ?? `${finalPosition.lat.toFixed(5)}, ${finalPosition.lng.toFixed(5)}`),
                 ward: profile?.ward ?? '',
@@ -206,7 +318,7 @@ export default function VoiceReportForm() {
                 isAnonymous: false,
                 source: 'voice',
                 audioURL: audioURLStored,
-                transcript,
+                transcript: description,
                 landmark: aiResult?.landmark ?? '',
                 aiConfidence: aiResult?.confidence ?? 0,
                 locationKeywords: aiResult?.landmark ? [aiResult.landmark] : [],
@@ -225,6 +337,8 @@ export default function VoiceReportForm() {
         }
     };
 
+    const langOption = LANG_OPTIONS.find(l => l.code === lang)!;
+
     if (submitted) {
         return (
             <div className={styles.successPage}>
@@ -236,11 +350,13 @@ export default function VoiceReportForm() {
         );
     }
 
+    const canExtractAI = description.trim().length > 0;
+
     return (
         <div className={styles.page}>
             <div className={styles.header}>
                 <h1 className={styles.title}>🎙️ Voice Report</h1>
-                <p className={styles.subtitle}>Speak in Tamil or English. AI will detect waste type & location.</p>
+                <p className={styles.subtitle}>Powered by Google Cloud Speech-to-Text & Gemini. Speak in Tamil or English.</p>
             </div>
 
             {/* Language Toggle */}
@@ -250,7 +366,7 @@ export default function VoiceReportForm() {
                         key={l.code}
                         type="button"
                         className={`btn btn-sm ${lang === l.code ? 'btn-primary' : 'btn-outline'}`}
-                        onClick={() => setLang(l.code)}
+                        onClick={() => setLang(l.code as LangCode)}
                         disabled={recording}
                     >
                         <Languages size={14} /> {l.label}
@@ -258,140 +374,196 @@ export default function VoiceReportForm() {
                 ))}
             </div>
 
-            {/* Record Button */}
-            {!recording && !audioBlob && (
-                <button type="button" className={styles.cameraBtn} onClick={startRecording} style={{ padding: '32px' }}>
-                    <Mic size={48} />
-                    <span>Tap to start recording</span>
-                    <span className={styles.cameraHint}>Max {MAX_RECORD_SEC} seconds · {lang === 'ta' ? 'தமிழ்' : 'English'}</span>
-                </button>
+            {/* ── Description Box — ALWAYS visible & editable ── */}
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label" style={{ fontWeight: 600 }}>
+                    {lang === 'ta' ? '📝 உங்கள் புகாரை தட்டச்சு செய்யுங்கள் (அல்லது குரல் பதிவு செய்யுங்கள்)' : '📝 Describe the issue (or use voice recording below)'}
+                </label>
+                <textarea
+                    className="textarea"
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    rows={4}
+                    placeholder={langOption.placeholder}
+                    style={{ fontSize: '15px', lineHeight: '1.6' }}
+                />
+                {description.trim().length > 0 && (
+                    <div style={{ fontSize: '12px', color: 'var(--color-success)', marginTop: '4px' }}>
+                        ✓ {description.trim().length} characters — ready for Gemini AI extraction
+                    </div>
+                )}
+                {recording && speechStatus === 'active' && (
+                    <div style={{ fontSize: '13px', color: '#3B82F6', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                        <div style={{ width: '8px', height: '8px', backgroundColor: '#3B82F6', borderRadius: '50%', animation: 'pulse 1.5s infinite' }} />
+                        ☁️ Google Cloud Speech-to-Text (Chirp Model) listening...
+                    </div>
+                )}
+                {recording && speechStatus === 'unsupported' && (
+                    <div style={{ fontSize: '12px', color: '#F59E0B', marginTop: '4px' }}>
+                        ⚠️ Cloud Speech-to-Text unavailable — type above while recording.
+                    </div>
+                )}
+            </div>
+
+            {/* AI Extract Button — enabled when description has text */}
+            <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleAIExtract}
+                disabled={aiLoading || !canExtractAI}
+                title={!canExtractAI ? 'Type a description first, then click to analyse' : ''}
+                style={{ marginBottom: '16px', width: '100%', background: 'var(--color-primary-500)' }}
+            >
+                {aiLoading
+                    ? <><Loader2 size={16} className="animate-spin" /> Analysing with Gemini 1.5 Pro...</>
+                    : <><Sparkles size={16} /> ✨ Extract info with Gemini AI</>
+                }
+            </button>
+            {!canExtractAI && (
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '-12px', marginBottom: '16px' }}>
+                    ↑ Type or speak your complaint above to enable Gemini analysis
+                </div>
             )}
 
-            {/* Recording in progress */}
-            {recording && (
-                <div style={{ textAlign: 'center', padding: '24px' }}>
-                    <div style={{ fontSize: '48px', marginBottom: '8px', animation: 'pulse 1s infinite' }}>🔴</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--fw-bold)', fontSize: '28px', color: 'var(--color-danger)', marginBottom: '4px' }}>
-                        {secondsLeft}s
+            {/* ── Record Button / Recording UI ── */}
+            {!recording && !audioBlob && (
+                <div style={{ marginBottom: '16px' }}>
+                    <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                        — Optional: Record voice for audio attachment —
                     </div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                        {lang === 'ta' ? 'பேசுங்கள்...' : 'Speak now...'}
-                    </div>
-                    <button type="button" className="btn btn-danger" onClick={stopRecording}>
-                        <Square size={18} /> Stop Recording
+                    <button type="button" className={styles.cameraBtn} onClick={startRecording} style={{ padding: '24px' }}>
+                        <Mic size={36} />
+                        <span>Tap to record voice</span>
+                        <span className={styles.cameraHint}>Max {MAX_RECORD_SEC}s · {lang === 'ta' ? 'தமிழ்' : 'English'}</span>
                     </button>
                 </div>
             )}
 
-            {/* After recording */}
-            {audioBlob && !submitted && (
-                <>
-                    {audioURL && <audio src={audioURL} controls style={{ width: '100%', marginBottom: '16px', borderRadius: '8px' }} />}
-
-                    <div className="form-group">
-                        <label className="form-label">Transcript</label>
-                        <textarea
-                            className="textarea"
-                            value={transcript}
-                            onChange={e => setTranscript(e.target.value)}
-                            rows={3}
-                            placeholder={lang === 'ta' ? 'பேசிய வார்த்தைகள் இங்கே...' : 'Spoken words appear here...'}
-                        />
+            {/* Recording in progress */}
+            {recording && (
+                <div style={{ textAlign: 'center', padding: '20px', background: 'rgba(239,68,68,0.05)', borderRadius: 'var(--radius-xl)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '40px', marginBottom: '6px', animation: 'pulse 1s infinite' }}>🔴</div>
+                    <div style={{ fontWeight: 'var(--fw-bold)', fontSize: '26px', color: 'var(--color-danger)', marginBottom: '4px' }}>
+                        {secondsLeft}s
                     </div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '14px' }}>
+                        {lang === 'ta' ? 'பேசுங்கள்...' : 'Speak now...'}
+                        {speechStatus === 'active' ? ' (transcribing live 🎤)' : ' (type above while speaking)'}
+                    </div>
+                    <button type="button" className="btn btn-danger" onClick={stopRecording}>
+                        <Square size={16} /> Stop Recording
+                    </button>
+                </div>
+            )}
 
-                    {/* AI Extract Button */}
+            {/* Audio playback after recording */}
+            {audioBlob && !recording && (
+                <div style={{ marginBottom: '16px' }}>
+                    {audioURL && <audio src={audioURL} controls style={{ width: '100%', borderRadius: '8px', marginBottom: '8px' }} />}
                     <button
                         type="button"
-                        className="btn btn-primary"
-                        onClick={handleAIExtract}
-                        disabled={aiLoading || !transcript.trim()}
-                        style={{ marginBottom: '16px', width: '100%' }}
+                        className="btn btn-ghost btn-sm"
+                        onClick={resetAll}
+                        style={{ width: '100%' }}
                     >
-                        {aiLoading
-                            ? <><Loader2 size={16} className="animate-spin" /> Analysing with AI...</>
-                            : <><Sparkles size={16} /> 🤖 Find Location & Type via AI</>
-                        }
+                        <X size={14} /> Record again
                     </button>
-
-                    {/* AI Result Card */}
-                    {aiResult && (
-                        <div style={{
-                            background: aiResult.urgency === 'sos'
-                                ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.07)',
-                            border: `1px solid ${aiResult.urgency === 'sos' ? 'var(--color-danger)' : 'var(--color-success)'}`,
-                            borderRadius: 'var(--radius-xl)',
-                            padding: '14px 16px',
-                            marginBottom: '16px',
-                        }}>
-                            <div style={{ fontWeight: 'var(--fw-semibold)', fontSize: '13px', marginBottom: '8px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                🤖 AI Extraction Result
-                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-                                    Confidence: {Math.round((aiResult.confidence ?? 0) * 100)}%
-                                </span>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px' }}>
-                                <div><span style={{ color: 'var(--text-muted)' }}>📍 Landmark: </span><strong>{aiResult.landmark || 'Not detected'}</strong></div>
-                                <div><span style={{ color: 'var(--text-muted)' }}>🗑️ Type: </span><strong>{aiResult.waste_type?.replace(/_/g, ' ')}</strong></div>
-                                <div><span style={{ color: 'var(--text-muted)' }}>⚡ Urgency: </span>
-                                    <strong style={{ color: aiResult.urgency === 'sos' ? '#EF4444' : aiResult.urgency === 'high' ? '#F59E0B' : '#10B981' }}>
-                                        {aiResult.urgency?.toUpperCase()}
-                                    </strong>
-                                </div>
-                                {geocodedLocation && (
-                                    <div style={{ color: '#10B981' }}>✅ Location found on map</div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="form-group">
-                        <label className="form-label">Waste Type</label>
-                        <select className="select" value={suggestedType} onChange={e => setSuggestedType(e.target.value as IssueType)}>
-                            {['glass_on_road', 'garbage_pile', 'plastic_waste', 'organic_waste', 'drainage', 'burning', 'toilet_issue', 'dead_animal', 'others'].map(t => (
-                                <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label">Location / Landmark</label>
-                        <input
-                            className="input"
-                            value={locationNote}
-                            onChange={e => setLocationNote(e.target.value)}
-                            placeholder={address || 'e.g. Near Meenakshi Temple East Gate'}
-                        />
-                    </div>
-
-                    {/* GPS / Geocoded location status */}
-                    {geocodedLocation ? (
-                        <div style={{ fontSize: '13px', color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' }}>
-                            <MapPin size={14} /> {geocodedLocation.displayName.slice(0, 80)}
-                        </div>
-                    ) : geoLoading ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '13px', marginBottom: '8px' }}>
-                            <Loader2 size={14} className="animate-spin" /> Getting GPS...
-                        </div>
-                    ) : position && (
-                        <div style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' }}>
-                            <MapPin size={14} /> {address || `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}`}
-                        </div>
-                    )}
-
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                        <button
-                            type="button"
-                            className="btn btn-ghost"
-                            onClick={() => { setAudioBlob(null); setAudioURL(''); setTranscript(''); setAiResult(null); setGeocodedLocation(null); }}
-                        >
-                            <X size={16} /> Record again
-                        </button>
-                        <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={submitting} style={{ flex: 1 }}>
-                            {submitting ? <Loader2 size={18} className="animate-spin" /> : null} Submit Report
-                        </button>
-                    </div>
-                </>
+                </div>
             )}
+
+            {/* AI Result Card */}
+            {aiResult && (
+                <div style={{
+                    background: aiResult.urgency === 'sos'
+                        ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.07)',
+                    border: `1px solid ${aiResult.urgency === 'sos' ? 'var(--color-danger)' : 'var(--color-success)'}`,
+                    borderRadius: 'var(--radius-xl)',
+                    padding: '14px 16px',
+                    marginBottom: '16px',
+                }}>
+                    <div style={{ fontWeight: 'var(--fw-semibold)', fontSize: '13px', marginBottom: '8px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        🤖 AI Extraction Result
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                            Confidence: {Math.round((aiResult.confidence ?? 0) * 100)}%
+                        </span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px' }}>
+                        <div><span style={{ color: 'var(--text-muted)' }}>📍 Landmark: </span><strong>{aiResult.landmark || 'Not detected'}</strong></div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>🗑️ Type: </span><strong>{aiResult.waste_type?.replace(/_/g, ' ')}</strong></div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>⚡ Urgency: </span>
+                            <strong style={{ color: aiResult.urgency === 'sos' ? '#EF4444' : aiResult.urgency === 'high' ? '#F59E0B' : '#10B981' }}>
+                                {aiResult.urgency?.toUpperCase()}
+                            </strong>
+                        </div>
+                        {geocodedLocation && (
+                            <div style={{ color: '#10B981' }}>✅ Location found on map</div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Waste Type Select */}
+            <div className="form-group">
+                <label className="form-label">Waste Type</label>
+                <select className="select" value={suggestedType} onChange={e => setSuggestedType(e.target.value as IssueType)}>
+                    {['glass_on_road', 'garbage_pile', 'plastic_waste', 'organic_waste', 'drainage', 'burning', 'toilet_issue', 'dead_animal', 'others'].map(t => (
+                        <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+                    ))}
+                </select>
+            </div>
+
+            {/* Location / Landmark */}
+            <div className="form-group">
+                <label className="form-label">Location / Landmark</label>
+                <input
+                    className="input"
+                    value={locationNote}
+                    onChange={e => setLocationNote(e.target.value)}
+                    placeholder={address || (lang === 'ta' ? 'எ.கா: மீனாட்சி கோவில் கிழக்கு வாசல்' : 'e.g. Near Meenakshi Temple East Gate')}
+                />
+            </div>
+
+            {/* Location - Auto Detected / Extracted */}
+            <div className={styles.locationCard} style={{ marginTop: '16px' }}>
+                <div className={styles.locationHeader}>
+                    <MapPin size={18} style={{ color: 'var(--color-primary-500)' }} />
+                    <span className={styles.sectionLabel} style={{ margin: 0 }}>Location</span>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={fetchLocation} style={{ marginLeft: 'auto' }}>
+                        Refresh
+                    </button>
+                </div>
+                {geocodedLocation ? (
+                    <div className={styles.locationText} style={{ color: '#10B981', fontWeight: 500 }}>
+                        ✅ {geocodedLocation.displayName}
+                    </div>
+                ) : geoLoading ? (
+                    <div className={styles.locationLoading}>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Getting your location...</span>
+                    </div>
+                ) : position ? (
+                    <div className={styles.locationText}>
+                        📍 {address || `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}`}
+                    </div>
+                ) : (
+                    <div className={styles.locationError}>
+                        ⚠️ Location not available. Please allow location permission.
+                    </div>
+                )}
+            </div>
+
+            {/* Submit */}
+            <div style={{ marginTop: '20px' }}>
+                <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSubmit}
+                    disabled={submitting || (!description.trim() && !audioBlob)}
+                    style={{ width: '100%' }}
+                >
+                    {submitting ? <Loader2 size={18} className="animate-spin" /> : null} Submit Report
+                </button>
+            </div>
         </div>
     );
 }

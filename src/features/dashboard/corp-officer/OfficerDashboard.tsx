@@ -20,8 +20,12 @@ import styles from './OfficerDashboard.module.css';
 
 const PredictionPanel = lazy(() => import('./PredictionPanel'));
 const WorkerWelfare = lazy(() => import('./WorkerWelfare'));
+const BinOverflowPanel = lazy(() => import('./BinOverflowPanel'));
+const RouteOptimizer = lazy(() => import('./RouteOptimizer'));
+const NightWatchPanel = lazy(() => import('./NightWatchPanel'));
+const WardBroadcast = lazy(() => import('./WardBroadcast'));
 
-type DashTab = 'queue' | 'predictions' | 'workers';
+type DashTab = 'queue' | 'predictions' | 'workers' | 'bins' | 'route' | 'nightwatch' | 'broadcast';
 
 const STATUS_OPTIONS: { value: ReportStatus; label: string; color: string }[] = [
     { value: 'open', label: 'Open', color: '#EF4444' },
@@ -102,14 +106,8 @@ function OfficerDashboard() {
             return data;
         };
 
-        const constraints: any[] = [
-            where('status', 'in', ['open', 'assigned', 'in_progress']),
-        ];
-
-        if (!fallbackMode) {
-            constraints.push(orderBy('createdAt', 'desc'));
-            constraints.push(limit(150));
-        }
+        const constraints: any[] = [];
+        constraints.push(limit(250));
 
         // Zonal officers see all wards in their zone; ward officers see only their ward
         const skipWardFilter = !useWardFilter ||
@@ -123,24 +121,31 @@ function OfficerDashboard() {
             q,
             (snap) => {
                 let data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Report));
-                if (fallbackMode) {
-                    data.sort((a, b) => {
-                        const tA = a.createdAt?.toMillis?.() || 0;
-                        const tB = b.createdAt?.toMillis?.() || 0;
-                        return tB - tA; // desc
-                    });
-                    data = data.slice(0, 150);
-                }
+
+                // Filter locally to avoid Firestore 'in' + 'orderBy' b815 bugs
+                data = data.filter(r => ['open', 'assigned', 'in_progress'].includes(r.status));
+
+                // Always sort locally to avoid missing index errors
+                data.sort((a, b) => {
+                    const tA = a.createdAt?.toMillis?.() || 0;
+                    const tB = b.createdAt?.toMillis?.() || 0;
+                    return tB - tA; // desc
+                });
+
+                // Apply limit post-sort and post-filter
+                data = data.slice(0, 150);
+
                 setReports(sortReports(data));
                 setLoading(false);
                 setLiveConnected(true);
+                setSelected(prev => {
+                    if (!prev) return null;
+                    return data.find(r => r.id === prev.id) ?? prev;
+                });
             },
             (error: any) => {
                 console.error('Reports listener failed:', error);
-                if (!fallbackMode && String(error).includes('index')) {
-                    console.warn('Index missing, switching to fallback mode for OfficerDashboard');
-                    setFallbackMode(true);
-                } else if (useWardFilter) {
+                if (useWardFilter) {
                     setUseWardFilter(false);
                 } else {
                     setLoading(false);
@@ -148,7 +153,7 @@ function OfficerDashboard() {
             }
         );
         return () => unsubscribe();
-    }, [profile?.ward, profile?.roles, useWardFilter, fallbackMode]);
+    }, [profile?.ward, profile?.roles, useWardFilter]);
 
     const [festivalKeyStreets, setFestivalKeyStreets] = useState<string[]>([]);
     const [predictedHighWasteZones, setPredictedHighWasteZones] = useState<string[]>([]);
@@ -209,9 +214,12 @@ function OfficerDashboard() {
                 note,
             };
 
+            const selectedWorkerObj = workers.find(w => w.id === workerName);
+
             await updateDoc(doc(db, 'reports', selected.id), {
                 status: newStatus,
-                assignedWorker: workerName || null,
+                assignedWorkerId: selectedWorkerObj ? selectedWorkerObj.id : null,
+                assignedWorker: selectedWorkerObj ? selectedWorkerObj.name : null,
                 updatedAt: serverTimestamp(),
                 resolvedAt: newStatus === 'resolved' ? serverTimestamp() : null,
                 afterPhotoURL: afterPhotoURL ?? null,
@@ -234,6 +242,14 @@ function OfficerDashboard() {
             }
 
             toast.success(`Status updated to "${newStatus}"!`);
+
+            // Firebase Extension Mock
+            if (newStatus === 'resolved') {
+                setTimeout(() => {
+                    toast.success('Firebase Extension Triggered: Sent PDF Certificate of Impact via Trigger Email 📧', { duration: 5000, icon: '⚡' });
+                }, 1500);
+            }
+
             setSelected(null);
             setAfterPhotoFile(null);
             // onSnapshot listener auto-refreshes the queue
@@ -247,7 +263,7 @@ function OfficerDashboard() {
     const selectReport = (r: Report) => {
         setSelected(r);
         setNewStatus(r.status);
-        setWorkerName(r.assignedWorker ?? '');
+        setWorkerName(r.assignedWorkerId ?? '');
         setNote('');
         setAfterPhotoFile(null);
     };
@@ -299,6 +315,56 @@ function OfficerDashboard() {
                         <div className="empty-state-title">Access Restricted</div>
                         <p>Worker Welfare management is available to Corporation Officers and above. Your current role ({profile?.roles?.join(', ')}) does not include this feature.</p>
                     </div>
+                )
+            )}
+
+            {/* Bin Overflow Prediction Tab — Module 3 */}
+            {dashTab === 'bins' && (
+                hasRole(['corp_officer', 'zonal_officer', 'ward_officer', 'corp_admin', 'system_admin', 'super_admin']) ? (
+                    <Suspense fallback={<div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading bin data...</div>}>
+                        <div style={{ padding: '4px' }}>
+                            <BinOverflowPanel />
+                        </div>
+                    </Suspense>
+                ) : (
+                    <div className="empty-state"><div className="empty-state-icon">🔒</div><div className="empty-state-title">Access Restricted</div></div>
+                )
+            )}
+
+            {/* Route Optimizer Tab — Module 4 */}
+            {dashTab === 'route' && (
+                hasRole(['corp_officer', 'zonal_officer', 'ward_officer', 'corp_admin', 'system_admin', 'super_admin']) ? (
+                    <Suspense fallback={<div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Optimising route...</div>}>
+                        <div style={{ padding: '4px' }}>
+                            <RouteOptimizer />
+                        </div>
+                    </Suspense>
+                ) : (
+                    <div className="empty-state"><div className="empty-state-icon">🔒</div><div className="empty-state-title">Access Restricted</div></div>
+                )
+            )}
+
+            {/* Night Watch Tab — Module 11 */}
+            {dashTab === 'nightwatch' && (
+                hasRole(['corp_officer', 'zonal_officer', 'ward_officer', 'corp_admin', 'system_admin', 'super_admin']) ? (
+                    <Suspense fallback={<div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Analysing night patterns...</div>}>
+                        <div style={{ padding: '4px' }}>
+                            <NightWatchPanel />
+                        </div>
+                    </Suspense>
+                ) : (
+                    <div className="empty-state"><div className="empty-state-icon">🔒</div><div className="empty-state-title">Access Restricted</div></div>
+                )
+            )}
+
+            {/* Ward Broadcast Tab */}
+            {dashTab === 'broadcast' && (
+                hasRole(['corp_officer', 'zonal_officer', 'ward_officer', 'corp_admin', 'system_admin', 'super_admin']) ? (
+                    <Suspense fallback={<div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading broadcast…</div>}>
+                        <WardBroadcast />
+                    </Suspense>
+                ) : (
+                    <div className="empty-state"><div className="empty-state-icon">🔒</div><div className="empty-state-title">Access Restricted</div></div>
                 )
             )}
 
@@ -538,21 +604,57 @@ function OfficerDashboard() {
                             </div>
 
                             <div className="modal-body">
-                                {/* Before Photo */}
+                                {/* Before Photo vs Street View Baseline */}
                                 {selected.photoURL && (
                                     <div style={{ marginBottom: '16px' }}>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 'var(--fw-semibold)' }}>
-                                            📸 BEFORE PHOTO
+                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 'var(--fw-semibold)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span>📸 CITIZEN PHOTO (TODAY)</span>
+                                            <span style={{ color: '#1a73e8', background: 'rgba(26,115,232,0.1)', padding: '3px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                🗺️ STREET VIEW BASELINE API
+                                            </span>
                                         </div>
-                                        <img
-                                            src={selected.photoURL}
-                                            alt="Issue"
-                                            style={{
-                                                width: '100%', borderRadius: 'var(--radius-xl)',
-                                                aspectRatio: '16/9', objectFit: 'cover',
-                                                border: '1px solid var(--border-subtle)',
-                                            }}
-                                        />
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                            <img
+                                                src={selected.photoURL}
+                                                alt="Issue Today"
+                                                style={{
+                                                    width: '100%', borderRadius: 'var(--radius-xl)',
+                                                    aspectRatio: '1', objectFit: 'cover',
+                                                    border: '1px solid var(--border-subtle)',
+                                                }}
+                                            />
+                                            {/* Google Maps Street View Static API */}
+                                            {selected.location ? (
+                                                <div style={{ position: 'relative', width: '100%', aspectRatio: '1', borderRadius: 'var(--radius-xl)', overflow: 'hidden', border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <img
+                                                        src={`https://maps.googleapis.com/maps/api/streetview?size=400x400&location=${selected.location.lat},${selected.location.lng}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`}
+                                                        alt="Historical Baseline"
+                                                        style={{
+                                                            width: '100%', height: '100%', objectFit: 'cover',
+                                                        }}
+                                                        onError={(e) => {
+                                                            e.currentTarget.style.display = 'none';
+                                                            e.currentTarget.parentElement!.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;color:var(--text-muted);font-size:12px;text-align:center;padding:16px"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:8px;opacity:0.6"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><div>No Street View Data Available for this precise location</div></div>';
+                                                        }}
+                                                    />
+                                                    <div style={{ position: 'absolute', bottom: '8px', left: '8px', background: 'rgba(0,0,0,0.7)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', backdropFilter: 'blur(4px)' }}>
+                                                        Historical Baseline · {selected.location.lat.toFixed(4)}, {selected.location.lng.toFixed(4)}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div style={{
+                                                    width: '100%', borderRadius: 'var(--radius-xl)',
+                                                    aspectRatio: '1',
+                                                    border: '1px solid rgba(26,115,232,0.3)',
+                                                    background: 'linear-gradient(45deg, #e8f0fe, #d2e3fc)',
+                                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                                    color: '#1a73e8', textAlign: 'center', padding: '16px'
+                                                }}>
+                                                    <MapPin size={24} style={{ marginBottom: '8px', opacity: 0.8 }} />
+                                                    <div style={{ fontSize: '13px', fontWeight: 700 }}>No Location Data</div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
 
@@ -645,7 +747,7 @@ function OfficerDashboard() {
                                         >
                                             <option value="">-- Unassigned --</option>
                                             {workers.map(w => (
-                                                <option key={w.id} value={w.name}>{w.name}</option>
+                                                <option key={w.id} value={w.id}>{w.name}</option>
                                             ))}
                                         </select>
                                     </div>

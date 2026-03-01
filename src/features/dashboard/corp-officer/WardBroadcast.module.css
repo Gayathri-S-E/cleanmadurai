@@ -1,0 +1,141 @@
+.page {
+    padding: 20px;
+    max-width: 640px;
+}
+
+.header {
+    margin-bottom: 20px;
+}
+
+.title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+}
+
+.subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.composeCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+}
+
+.textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border-subtle);
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-size: 14px;
+    resize: vertical;
+    box-sizing: border-box;
+    font-family: var(--font-display);
+    transition: border-color 0.15s;
+    line-height: 1.6;
+}
+
+.textarea:focus {
+    outline: none;
+    border-color: var(--color-primary-500);
+}
+
+.charCount {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    font-size: 12px;
+}
+
+.sendBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    border-radius: 10px;
+    border: none;
+    background: var(--color-primary-500);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.sendBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.historyTitle {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 12px;
+}
+
+.empty {
+    text-align: center;
+    padding: 30px;
+    color: var(--text-muted);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.historyList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.historyCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+
+.historyMsg {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin: 0 0 8px;
+    line-height: 1.5;
+}
+
+.historyMeta {
+    display: flex;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+
+.historyMeta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}

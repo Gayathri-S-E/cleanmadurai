@@ -48,15 +48,15 @@ service cloud.firestore {
       allow delete: if hasRole('super_admin') || hasRole('system_admin');
     }
 
-    // Waste listings
-    match /waste_listings/{listingId} {
+    // Exchange listings (formerly waste_listings)
+    match /exchange_listings/{listingId} {
       allow read: if true;
-      allow create: if request.auth != null && request.resource.data.listerId == request.auth.uid
-        && (hasRole('shop_owner') || hasRole('hotel_owner') || hasRole('market_vendor'));
+      allow create: if request.auth != null && request.resource.data.lister_uid == request.auth.uid
+        && (hasRole('shop_owner') || hasRole('hotel_owner') || hasRole('market_vendor') || hasRole('citizen'));
       allow update: if request.auth != null && (
-        resource.data.listerId == request.auth.uid || 
-        resource.data.claimerId == request.auth.uid ||
-        hasRole('farmer') || hasRole('animal_shelter') || hasRole('recycler') || isAdmin()
+        resource.data.lister_uid == request.auth.uid || 
+        resource.data.claimed_by_uid == request.auth.uid ||
+        hasRole('farmer') || hasRole('animal_caretaker') || hasRole('recycler') || isAdmin()
       );
     }
 
@@ -67,10 +67,10 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Wards — public read; any admin can write
+    // Wards — public read; any authenticated user can create (so they can add blocks); any admin can write/delete
     match /wards/{wardId} {
       allow read: if true;
-      allow create: if isAdmin();
+      allow create: if request.auth != null;
       allow update, delete: if isAdmin();
     }
 
@@ -95,6 +95,44 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /bins/{binId} {
+      allow read: if true;
+      allow create, update: if request.auth != null && canManageReports();
+      allow delete: if isAdmin();
+    }
+
+    match /toilets/{toiletId} {
+      allow read: if true;
+      allow create, update: if request.auth != null && canManageReports();
+      allow delete: if isAdmin();
+    }
+
+    match /toilet_ratings/{ratingId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.citizenId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /points_ledger/{ledgerId} {
+      allow read: if request.auth != null && resource.data.user_uid == request.auth.uid || isAdmin();
+      allow write: if false; // Only Cloud Functions can write
+    }
+
+    match /waste_credit_scores/{wardId} {
+      allow read: if true;
+      allow write: if false; // Only Cloud Functions
+    }
+
+    match /scrap_prices/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /dump_clusters/{clusterId} {
+      allow read: if request.auth != null && canManageReports();
+      allow write: if false; // Only Cloud Functions
+    }
+
     match /specialZones/{zoneId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -111,6 +149,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Worker pre-assignments for AI Predictions panel
+    match /workerAssignments/{docId} {
+      allow read: if request.auth != null && canManageReports();
+      allow create: if request.auth != null && canManageReports();
+      allow update, delete: if request.auth != null && (isAdmin() || hasRole('corp_officer') || hasRole('ward_officer') || hasRole('zonal_officer'));
+    }
+
     match /mail/{document=**} {
       allow create: if request.auth != null;
     }
@@ -121,9 +166,32 @@ service cloud.firestore {
     }
 
     // Audit logs — admins read only; cloud functions write via admin SDK
-    match /auditLogs/{logId} {
+    match /audit_log/{logId} {
       allow read: if isAdmin();
       allow write: if false;
+    }
+
+    // Cleanup/volunteer events — public read, officer/admin/college_admin can write
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if request.auth != null && (canManageReports() || hasRole('college_admin'));
+      allow update: if request.auth != null && (canManageReports() || hasRole('college_admin') || request.auth.uid in resource.data.attendees || resource.data.organizerId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // Drain Watch — authenticated users inspect; officers see all
+    match /drains/{drainId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if isAdmin();
+    }
+
+    // Ward broadcasts — authenticated read; officer/admin write
+    match /broadcasts/{broadcastId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && canManageReports();
+      allow update, delete: if isAdmin();
     }
   }
 }

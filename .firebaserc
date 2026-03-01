@@ -1,5 +1,7 @@
 {
-  "projects": {},
+  "projects": {
+    "default": "madurai-78eca"
+  },
   "targets": {},
   "etags": {}
 }

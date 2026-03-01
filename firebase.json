@@ -5,9 +5,27 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
-  "functions": {
-    "source": "functions"
-  },
+  "functions": [
+    {
+      "codebase": "default",
+      "source": "functions"
+    },
+    {
+      "source": "api",
+      "codebase": "api",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ],
   "hosting": {
     "public": "dist",
     "ignore": [

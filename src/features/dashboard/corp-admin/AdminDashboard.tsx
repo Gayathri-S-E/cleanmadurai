@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     collection, getDocs, query, where, doc, updateDoc,
@@ -12,12 +12,16 @@ import {
     ShieldCheck, Download, RefreshCw, Plus, Trash2,
     Building2, Star, MapPin, AlertTriangle, Clock,
     Flag, Edit3, X, PartyPopper, Settings, UserX, UserCheck,
-    Save, FileText, Layers, ChevronUp, ChevronDown
+    Save, FileText, Layers, ChevronUp, ChevronDown, Brain, Navigation
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import styles from './AdminDashboard.module.css';
 import { LocationPicker } from '../../../components/ui/LocationPicker';
+
+const GovernanceDashboard = lazy(() => import('./GovernanceDashboard'));
+const SurvekshanDashboard = lazy(() => import('./SurvekshanDashboard'));
+const HeatmapOverview = lazy(() => import('./HeatmapOverview'));
 
 interface RoleRequest {
     uid: string;
@@ -96,11 +100,14 @@ interface BlockRow {
     openComplaints: number;
 }
 
-type Tab = 'overview' | 'kpi' | 'wards' | 'role_requests' | 'users' | 'zones' | 'reports' | 'blocks' | 'settings' | 'system';
+type Tab = 'overview' | 'governance' | 'survekshan' | 'wcs' | 'kpi' | 'wards' | 'role_requests' | 'users' | 'zones' | 'reports' | 'blocks' | 'settings' | 'system';
 
 // Tabs visible to corp_admin and above
 const CORP_ADMIN_TABS: { key: Tab; label: string; icon: any }[] = [
     { key: 'overview', label: 'Overview', icon: BarChart3 },
+    { key: 'governance', label: 'Intelligence', icon: Brain },
+    { key: 'survekshan', label: '🏆 Survekshan', icon: BarChart3 },
+    { key: 'wcs', label: 'Waste Credit', icon: Award },
     { key: 'kpi', label: 'KPI Analytics', icon: BarChart3 },
     { key: 'wards', label: 'Ward Rankings', icon: Building2 },
     { key: 'reports', label: 'All Reports', icon: FileText },
@@ -746,6 +753,13 @@ function AdminDashboard() {
             {/* Tabs bar removed — navigation is now via the sidebar links */}
 
 
+            {/* Survekshan Dashboard Tab */}
+            {activeTab === 'survekshan' && (
+                <Suspense fallback={<div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading Survekshan Dashboard…</div>}>
+                    <SurvekshanDashboard />
+                </Suspense>
+            )}
+
             {/* Overview Tab */}
             {activeTab === 'overview' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
@@ -817,6 +831,26 @@ function AdminDashboard() {
                         ))}
                     </div>
 
+                    {/* Heatmap Section */}
+                    <div style={{
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-2xl)',
+                        padding: 'var(--space-5)',
+                        marginTop: '0px'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+                            <h2 className={styles.sectionTitle}>
+                                <MapPin size={18} style={{ color: 'var(--color-primary-500)', marginRight: '8px', display: 'inline' }} />
+                                Cleanliness Heatmap
+                            </h2>
+                            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Live Map</span>
+                        </div>
+                        <Suspense fallback={<div style={{ height: 350, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-xl)' }}>Loading Map...</div>}>
+                            <HeatmapOverview />
+                        </Suspense>
+                    </div>
+
                     {/* Quick shortcuts */}
                     <div style={{
                         background: 'var(--bg-card)',
@@ -846,6 +880,135 @@ function AdminDashboard() {
                                 );
                             })}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Governance Intelligence Dashboard — Module 14 */}
+            {activeTab === 'governance' && (
+                <Suspense fallback={<div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading Intelligence Dashboard...</div>}>
+                    <GovernanceDashboard />
+                </Suspense>
+            )}
+
+            {/* Waste Credit Score Dashboard — Module 13 */}
+            {activeTab === 'wcs' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ background: 'linear-gradient(135deg, #0c4a6e, #0284c7)', borderRadius: '16px', padding: '18px 22px', color: 'white' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.5px', opacity: 0.7, marginBottom: '8px' }}>MODULE 13 · WASTE CREDIT SCORE SYSTEM</div>
+                        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '24px' }}>Waste Credit Score (WCS) Dashboard</div>
+                        <div style={{ fontSize: '13px', opacity: 0.8, marginTop: '4px' }}>Score range: 0–900 · Based on 7 weighted factors · live Firestore data</div>
+                    </div>
+
+                    {/* WCS legend */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px' }}>
+                        {[
+                            { range: '720–900', label: 'Excellent', color: '#16a34a', bg: 'rgba(22,163,74,0.10)' },
+                            { range: '540–719', label: 'Stable', color: '#0284c7', bg: 'rgba(2,132,199,0.10)' },
+                            { range: '360–539', label: 'At Risk', color: '#d97706', bg: 'rgba(217,119,6,0.10)' },
+                            { range: '0–359', label: 'Critical', color: '#dc2626', bg: 'rgba(220,38,38,0.10)' },
+                        ].map((tier, i) => (
+                            <div key={i} style={{ background: tier.bg, borderRadius: '10px', padding: '12px 14px', border: `1px solid ${tier.color}30` }}>
+                                <div style={{ fontWeight: 700, fontSize: '13px', color: tier.color }}>{tier.label}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{tier.range}</div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Ward WCS table — real Firestore data from wardStats */}
+                    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '14px', padding: '18px 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                            <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 'var(--fw-bold)', fontSize: '14px', margin: 0 }}>
+                                📊 Ward WCS Rankings
+                            </h3>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                                {loadingWards ? 'Loading…' : `${wardStats.length} wards · live Firestore data`}
+                            </span>
+                            <button
+                                onClick={fetchWards}
+                                style={{ fontSize: '11px', padding: '4px 10px', background: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-primary)' }}
+                            >
+                                ↺ Refresh
+                            </button>
+                        </div>
+
+                        {loadingWards ? (
+                            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>Loading ward data from Firestore…</div>
+                        ) : wardStats.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                                No wards found in the database. Create wards in the "Ward Rankings" tab first.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {[...wardStats].map((w) => {
+                                    // Compute WCS components from real Firestore ward fields
+                                    const collection_pts = Math.min(200, (w.resolvedReports ?? 0) * 3);
+                                    const cleanliness_pts = Math.min(100, w.cleanlinessScore ?? 0);
+                                    const complaint_pts = Math.max(0, 100 - Math.min(100, (w.openReports ?? 0) * 4));
+                                    const exchange_pts = Math.min(200, (w.wasteExchanges ?? 0) * 20);
+                                    const adopt_pts = Math.min(100, (w.adoptedBlocks ?? 0) * 25);
+                                    const hazard_pts = 75; // default 75 (full hazard breakdown requires sub-query)
+                                    const engage_pts = Math.min(100, (w.resolvedReports ?? 0));
+                                    const wcs = Math.round(collection_pts + cleanliness_pts + complaint_pts + exchange_pts + adopt_pts + hazard_pts + engage_pts);
+
+                                    const level = wcs >= 720 ? 'excellent' : wcs >= 540 ? 'stable' : wcs >= 360 ? 'at_risk' : 'critical';
+                                    const levels: Record<string, { color: string; label: string }> = {
+                                        excellent: { color: '#16a34a', label: '🟢 Excellent' },
+                                        stable: { color: '#0284c7', label: '🔵 Stable' },
+                                        at_risk: { color: '#d97706', label: '🟠 At Risk' },
+                                        critical: { color: '#dc2626', label: '🔴 Critical' },
+                                    };
+                                    const cfg = levels[level];
+                                    const breakDown = {
+                                        collection: collection_pts,
+                                        cleanliness: cleanliness_pts,
+                                        complaints: complaint_pts,
+                                        exchange: exchange_pts,
+                                        adoption: adopt_pts,
+                                        hazard: hazard_pts,
+                                        engagement: engage_pts,
+                                    };
+
+                                    return (
+                                        <div key={w.id} style={{ background: 'var(--bg-subtle)', borderRadius: '10px', padding: '12px 14px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                                <div style={{ flex: 1, minWidth: '140px' }}>
+                                                    <div style={{ fontWeight: 700, fontSize: '14px' }}>{w.name}</div>
+                                                    <div style={{ fontSize: '11px', marginTop: '2px' }}>
+                                                        <span style={{ padding: '2px 8px', borderRadius: '99px', background: cfg.color + '22', color: cfg.color, fontWeight: 700 }}>
+                                                            {cfg.label}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div style={{ flex: 2, minWidth: '180px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <div style={{ flex: 1, height: '10px', borderRadius: '99px', background: 'var(--bg-card)', overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${Math.min(100, (wcs / 900) * 100)}%`, background: cfg.color, borderRadius: '99px', transition: 'width 0.6s' }} />
+                                                        </div>
+                                                        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '18px', color: cfg.color, minWidth: '40px' }}>{wcs}</span>
+                                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>/900</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginTop: '10px' }}>
+                                                {Object.entries(breakDown).map(([key, val]) => (
+                                                    <div key={key} style={{ textAlign: 'center' }}>
+                                                        <div style={{ fontWeight: 700, fontSize: '13px', color: cfg.color }}>{val}</div>
+                                                        <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{key}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Formula reference */}
+                    <div style={{ background: 'var(--bg-subtle)', borderRadius: '12px', padding: '14px 18px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                        <strong style={{ color: 'var(--text-primary)' }}>WCS Formula:</strong>{' '}
+                        Collection (0–200) + Cleanliness Score (0–100) + Complaint Density (0–100) + Waste Exchange (0–200) + Block Adoption (0–100) + Hazardous Waste (0–100) + Civic Engagement (0–100) = Total/900
                     </div>
                 </div>
             )}

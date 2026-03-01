@@ -59,9 +59,13 @@ export type NavIconId =
   | 'exchange'
   | 'adopt'
   | 'leaderboard'
+  | 'mirror'
+  | 'my_reports'
   | 'dashboard'
   | 'admin'
   | 'admin_overview'
+  | 'admin_governance'
+  | 'admin_wcs'
   | 'admin_kpi'
   | 'admin_wards'
   | 'admin_roles'
@@ -75,9 +79,18 @@ export type NavIconId =
   | 'officer_queue'
   | 'officer_predictions'
   | 'officer_workers'
+  | 'officer_bins'
+  | 'officer_route'
+  | 'officer_nightwatch'
+  | 'officer_broadcast'
+  | 'officer_restrooms'
   | 'profile'
   | 'settings'
-  | 'logout';
+  | 'logout'
+  | 'restrooms'
+  | 'events'
+  | 'badges'
+  | 'request_bin';
 
 export interface NavItemConfig {
   to: string;
@@ -115,6 +128,12 @@ export const SIDEBAR_NAV_SECTIONS: NavSectionConfig[] = [
       { to: '/dashboard/predictions', labelKey: 'nav.officer.predictions', iconId: 'officer_predictions', roles: PREDICTIONS_ROLES },
       // Worker welfare: corp_officer and above only
       { to: '/dashboard/workers', labelKey: 'nav.officer.workers', iconId: 'officer_workers', roles: WORKER_WELFARE_ROLES },
+      // Intelligence modules (officer level and above)
+      { to: '/dashboard/bins', labelKey: 'nav.officer.bins', iconId: 'officer_bins', roles: PREDICTIONS_ROLES },
+      { to: '/dashboard/route', labelKey: 'nav.officer.route', iconId: 'officer_route', roles: PREDICTIONS_ROLES },
+      { to: '/dashboard/nightwatch', labelKey: 'nav.officer.nightwatch', iconId: 'officer_nightwatch', roles: PREDICTIONS_ROLES },
+      { to: '/dashboard/broadcast', labelKey: 'nav.officer.broadcast', iconId: 'officer_broadcast', roles: OFFICER_DASHBOARD_ROLES },
+      { to: '/restroom-management', labelKey: 'nav.officer.restrooms', iconId: 'officer_restrooms', roles: ['corp_admin', 'system_admin', 'super_admin', 'corp_officer', 'zonal_officer', 'ward_officer'] },
     ],
   },
 
@@ -125,6 +144,9 @@ export const SIDEBAR_NAV_SECTIONS: NavSectionConfig[] = [
     roles: ADMIN_PANEL_ROLES,
     items: [
       { to: '/admin/overview', labelKey: 'nav.admin.overview', iconId: 'admin_overview', roles: ADMIN_PANEL_ROLES, end: true },
+      { to: '/admin/governance', labelKey: 'nav.admin.governance', iconId: 'admin_governance', roles: ADMIN_PANEL_ROLES },
+      { to: '/admin/survekshan', labelKey: 'nav.admin.survekshan', iconId: 'admin_wcs', roles: ADMIN_PANEL_ROLES },
+      { to: '/admin/wcs', labelKey: 'nav.admin.wcs', iconId: 'admin_wcs', roles: ADMIN_PANEL_ROLES },
       { to: '/admin/kpi', labelKey: 'nav.admin.kpi', iconId: 'admin_kpi', roles: ADMIN_PANEL_ROLES },
       { to: '/admin/wards', labelKey: 'nav.admin.wards', iconId: 'admin_wards', roles: ADMIN_PANEL_ROLES },
       { to: '/admin/reports', labelKey: 'nav.admin.reports', iconId: 'admin_reports', roles: ADMIN_PANEL_ROLES },
@@ -146,8 +168,14 @@ export const SIDEBAR_NAV_SECTIONS: NavSectionConfig[] = [
       { to: '/home', labelKey: 'nav.home', iconId: 'home', roles: CITIZEN_ROLES },
       { to: '/report', labelKey: 'nav.report', iconId: 'report', roles: CITIZEN_ROLES },
       { to: '/map', labelKey: 'nav.map', iconId: 'map', roles: CITIZEN_ROLES },
+      { to: '/restrooms', labelKey: 'nav.restrooms', iconId: 'restrooms', roles: CITIZEN_ROLES },
+      { to: '/events', labelKey: 'nav.events', iconId: 'events', roles: CITIZEN_ROLES },
       { to: '/adopt', labelKey: 'nav.adopt', iconId: 'adopt', roles: CITIZEN_ROLES },
+      { to: '/my-reports', labelKey: 'nav.my_reports', iconId: 'my_reports', roles: CITIZEN_ROLES },
       { to: '/leaderboard', labelKey: 'nav.leaderboard', iconId: 'leaderboard', roles: CITIZEN_ROLES },
+      { to: '/badges', labelKey: 'nav.badges', iconId: 'badges', roles: CITIZEN_ROLES },
+      { to: '/mirror', labelKey: 'nav.mirror', iconId: 'mirror', roles: CITIZEN_ROLES },
+      { to: '/request-bin', labelKey: 'nav.request_bin', iconId: 'request_bin', roles: CITIZEN_ROLES },
     ],
   },
 

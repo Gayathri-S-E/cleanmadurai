@@ -81,6 +81,7 @@ export interface Report {
     isAnonymous: boolean;
     assignedTo?: string;
     assignedWorker?: string;
+    assignedWorkerId?: string;
     statusHistory: StatusHistoryEntry[];
     specialZone?: string;
     festivalBoost?: boolean;
@@ -204,4 +205,99 @@ export interface Ward {
     cleanlinessScore: number;
     wasteExchanges: number;
     adoptedBlocks: number;
+}
+
+// ── Restroom Network ─────────────────────────────────────────────────────────
+
+export type ToiletStatus = 'open' | 'closed' | 'repair';
+export type ToiletType = 'public_free' | 'pay_use' | 'petrol_station' | 'market' | 'bus_stand' | 'park';
+
+export interface Toilet {
+    id: string;
+    name: string;
+    location: GeoPoint;
+    address: string;
+    ward: string;
+    type?: ToiletType;
+    managedBy?: string;
+    facilities: string[];          // e.g. ['water','soap','lighting','divyang']
+    operatingHours?: string;       // e.g. '6 AM – 10 PM' or '24h'
+    status: 'open' | 'closed' | 'under_maintenance' | 'repair';
+    liveRating: number;            // auto-averaged from toilet_ratings
+    ratingCount: number;           // total number of ratings
+    maleSeats?: number;
+    femaleSeats?: number;
+    divyangSeats?: number;
+    lastCleaned?: any;
+    lastInspected?: any;
+    createdBy?: string;
+    createdAt: any;
+    updatedAt?: any;
+}
+
+export interface ToiletRating {
+    id: string;
+    toiletId: string;
+    citizenId: string;
+    stars: 1 | 2 | 3 | 4 | 5;
+    tags: string[];                // e.g. ['dirty','no_water','locked']
+    createdAt: any;
+}
+
+// ── Events & Drives ───────────────────────────────────────────────────────────
+
+export type EventStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+export type EventType = 'cleanup' | 'awareness' | 'inspection' | 'plantation';
+
+export interface CleanEvent {
+    id: string;
+    title: string;
+    titleTA?: string;
+    description?: string;
+    type: EventType;
+    organizerId: string;
+    organizerName: string;
+    organizerRole?: string;         // 'corp_officer' | 'college_admin' | 'ngo'
+    location: GeoPoint;
+    address?: string;
+    ward?: string;
+    date: any;                      // Firestore Timestamp
+    maxSlots: number;
+    attendees: string[];            // array of user UIDs
+    kgCollected?: number;
+    photos: string[];
+    status: EventStatus;
+    createdAt: any;
+    updatedAt?: any;
+}
+
+// ── Drain Watch ───────────────────────────────────────────────────────────────
+
+export type DrainStatus = 'clear' | 'partial' | 'blocked';
+
+export interface Drain {
+    id: string;
+    name?: string;
+    location: GeoPoint;
+    address?: string;
+    ward?: string;
+    status: DrainStatus;
+    lastInspectedBy?: string;      // display name
+    inspectorId?: string;          // uid
+    lastInspectedAt?: any;
+    photo?: string;
+    createdAt: any;
+    updatedAt?: any;
+}
+
+// ── Ward Broadcast ────────────────────────────────────────────────────────────
+
+export interface Broadcast {
+    id: string;
+    officerId: string;
+    officerName: string;
+    ward: string;
+    message: string;               // max 120 chars
+    recipientCount: number;
+    sentAt: any;
 }
